@@ -1,156 +1,230 @@
 <!DOCTYPE html>
-<html lang="pt-br">
-  
-  <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  
-  <title>Campeonato Solar Intelbras</title>
-  
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"</script>
-  
-  <style>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>Dashboard Comercial Solar Intelbras</title>
+
+5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+https://cdn.jsdelivr.net/npm/chart.js
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></
 body{
-  font-family:Arial;
-  background:#f4f6f9;
-  margin:0;
-  padding:30px;
-}
-   
-.container{
-  max-width:1000px;
-  margin:auto;
-}
-    
-h1{
-  text-align:center;
-  color:#0f4c81;
-}
-    
-.upload{
-  background:white;
-  padding:20px;
-  border-radius:10px;
-  margin-bottom:20px;
-}
-  
-.time{
-  background:white;
-  margin-bottom:10px;
-  padding:20px;
-  border-radius:10px;
-  box-shadow:0px 2px 5px rgba(0,0,0,0.1);
+background:#f2f4f7;
+font-family:Arial,sans-serif;
 }
 
-.nome{
-  font-size:24px;
-  font-weight:bold;
+.card-kpi{
+border:none;
+border-radius:12px;
+box-shadow:0 2px 6px rgba(0,0,0,.1);
 }
 
-.pontos{
-  font-size:36px;
-  color:#27ae60;
+.kpi-valor{
+font-size:30px;
+font-weight:bold;
+color:#0d6efd;
 }
- 
+
+canvas{
+background:white;
+border-radius:12px;
+padding:10px;
+}
+
 </style>
 
 </head>
 
 <body>
 
-<div class="container">
+<div class="container-fluid p-4">
 
-  <h1>🏆 Campeonato Solar Intelbras</h1>
+<h2 class="mb-4">
+Dashboard Comercial Solar Intelbras
+</h2>
 
-<div class="upload">
-  
-  <h3>Selecionar Planilha</h3>
-  
-  <input type="file" id="excelFile">
-  
+<div class="row mb-4">
+
+<div class="col-md-3">
+<div class="card card-kpi">
+<div class="card-body">
+<h6>Faturamento Total</h6>
+<div class="kpi-valor" id="faturamento">
+R$ 0
 </div>
-  
-<div id="ranking">
-  
+</div>
+</div>
+</div>
+
+<div class="col-md-3">
+<div class="card card-kpi">
+<div class="card-body">
+<h6>Pedidos</h6>
+<div class="kpi-valor" id="pedidos">
+0
+</div>
+</div>
+</div>
+</div>
+
+<div class="col-md-3">
+<div class="card card-kpi">
+<div class="card-body">
+<h6>Clientes</h6>
+<div class="kpi-valor" id="clientes">
+0
+</div>
+</div>
+</div>
+</div>
+
+<div class="col-md-3">
+<div class="card card-kpi">
+<div class="card-body">
+<h6>Ticket Médio</h6>
+<div class="kpi-valor" id="ticket">
+R$ 0
+</div>
+</div>
+</div>
+</div>
+
+</div>
+
+<div class="row">
+
+<div class="col-md-6">
+<canvas id="graficoMes"></canvas>
+</div>
+
+<div class="col-md-6">
+<canvas id="graficoEstado"></canvas>
+</div>
+
 </div>
 
 </div>
 
 <script>
-  
-document
-.getElementById("excelFile")
-.addEventListener("change", carregarExcel);
 
-function carregarExcel(event){
-  
-const arquivo = event.target.files[0];
+const SHEET_URL =
+"https://docs.google.com/spreadsheets/d/e/2PACX-1vSqx7U2cl8xkvdvfvonO93y4Tl6dJi9es4SxABFOwTbqnnlgOUP2TPLKTy-_wKCAIr7og_5N9oVopdv/pub?gid=1490199678&single=true&output=csv";
 
-const reader = new FileReader();
-  
-reader.onload = function(e){
-  
-const dados = new Uint8Array(e.target.result);
-  
-const workbook =
-XLSX.read(dados,{type:'array'});
+Papa.parse(SHEET_URL,{
+download:true,
+header:true,
 
-const worksheet =
-workbook.Sheets["PAINEL - TIME"];
-  
-const json =
-XLSX.utils.sheet_to_json(worksheet);
-  
-mostrarRanking(json);
+complete:function(resultado){
+
+const dados = resultado.data;
+
+let faturamento = 0;
+let pedidos = 0;
+
+let clientes = new Set();
+
+let estados = {};
+
+dados.forEach(linha=>{
+
+pedidos++;
+
+clientes.add(linha["Nome do Cli"]);
+
+let valor =
+parseFloat(
+String(linha["Valor Total Pago"] || "0")
+.replace(/\./g,'')
+.replace(',','.')
+);
+
+if(!isNaN(valor)){
+faturamento += valor;
+}
+
+let uf = linha["Estado Cliente"];
+
+if(uf){
+
+estados[uf] =
+(estados[uf] || 0) + valor;
 
 }
-  
-reader.readAsArrayBuffer(arquivo);
-
-}
-  
-function mostrarRanking(dados){
-  
-let html = "";
-
-  dados.sort((a,b)=>b.Pontos-a.Pontos);
-  
-dados.forEach((time,index)=>{
-  
-let medalha = "";
-  
-if(index===0) medalha="🥇";
-if(index===1) medalha="🥈";
-if(index===2) medalha="🥉";
-  
-html += `
-
-<div class="time">
-
-<div class="nome">
-
-${medalha} ${time.Time}
-
-</div>
-
-<div class="pontos">
-
-${time.Pontos} Pontos
-
-</div>
-
-</div>
-
-`;
 
 });
-  
-  document.getElementById("ranking").innerHTML = html;
+
+document.getElementById("faturamento")
+.innerHTML =
+faturamento.toLocaleString(
+'pt-BR',
+{
+style:'currency',
+currency:'BRL'
+});
+
+document.getElementById("pedidos")
+.innerHTML = pedidos;
+
+document.getElementById("clientes")
+.innerHTML = clientes.size;
+
+document.getElementById("ticket")
+.innerHTML =
+(faturamento/pedidos)
+.toLocaleString(
+'pt-BR',
+{
+style:'currency',
+currency:'BRL'
+});
+
+gerarGraficoUF(estados);
 
 }
+
+});
+
+
+function gerarGraficoUF(estados){
+
+new Chart(
+document.getElementById('graficoEstado'),
+{
+type:'bar',
+data:{
+labels:Object.keys(estados),
+datasets:[{
+label:'Faturamento por Estado',
+data:Object.values(estados),
+backgroundColor:'#198754'
+}]
+}
+});
+
+}
+
+new Chart(
+document.getElementById('graficoMes'),
+{
+type:'line',
+data:{
+labels:[
+'Jan','Fev','Mar',
+'Abr','Mai','Jun',
+'Jul','Ago','Set',
+'Out','Nov','Dez'
+],
+datasets:[{
+label:'Evolução Comercial',
+data:[0,0,0,0,0,0,0,0,0,0,0,0],
+borderColor:'#0d6efd'
+}]
+}
+});
 
 </script>
 
 </body>
-
 </html>
