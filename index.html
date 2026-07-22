@@ -3,13 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dashboard de Vendas e Faturamento - Intelbras</title>
+  <title>Dashboard de Vendas e Pagamentos - Intelbras</title>
   
-  <!-- Chart.js para Gráficos -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <!-- PapaParse para ler CSV da Google Planilha -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-  <!-- DataTables CSS e JS para a Tabela de Dados -->
   <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
   <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
   <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
@@ -317,14 +314,13 @@
 <body>
 
   <header>
-    <h1><span>intelbras</span> Dashboard Corporativo de Vendas</h1>
+    <h1><span>intelbras</span> Dashboard Corporativo de Pagamentos</h1>
     <div class="header-badge">
       <span class="status-dot"></span>
       <span id="status">Sincronizando dados...</span>
     </div>
   </header>
 
-  <!-- Barra de Filtros Interativos por Mês e Ano -->
   <div class="filter-bar" id="filterBar" style="display: none;">
     <div class="filter-group">
       <label for="selectAno">📅 Ano:</label>
@@ -357,7 +353,7 @@
 
   <div class="tabs-container">
     <ul class="tabs">
-      <li><button class="tab-button active" onclick="openTab('graficos')">📊 Panorâmica de Faturamento</button></li>
+      <li><button class="tab-button active" onclick="openTab('graficos')">📊 Panorâmica de Pagamentos</button></li>
       <li><button class="tab-button" onclick="openTab('executivos')">👥 Vendedores & Revendas</button></li>
       <li><button class="tab-button" onclick="openTab('distribuidores')">🏢 Distribuidores & Canais</button></li>
       <li><button class="tab-button" onclick="openTab('dados')">📁 Base de Dados Completa</button></li>
@@ -368,13 +364,12 @@
     <div id="loading">
       <div class="spinner"></div>
       <h3 style="color: var(--intelbras-dark);">Carregando relatório do Google Sheets...</h3>
-      <p style="color: #6B7280; margin-top: 5px;">Lendo colunas "Mes" e "Ano" para automatizar filtros e gráficos.</p>
+      <p style="color: #6B7280; margin-top: 5px;">Lendo colunas "Mes" e "Ano" para automatizar filtros e gráficos em ordem cronológica.</p>
     </div>
 
-    <!-- KPI Header Cards -->
     <div id="kpiSection" class="kpi-grid" style="display: none;">
       <div class="kpi-card">
-        <div class="kpi-title">Faturamento Total</div>
+        <div class="kpi-title">Pagamento Total</div>
         <div class="kpi-value" id="kpiFaturamento">R$ 0,00</div>
         <div class="kpi-sub">Soma do Valor Total</div>
       </div>
@@ -395,11 +390,10 @@
       </div>
     </div>
 
-    <!-- Aba 1: Faturamento & Mensal -->
     <div id="graficos" class="tab-content">
       <div class="dashboard-grid">
         <div class="card full-width">
-          <h2>1. EVOLUÇÃO DO FATURAMENTO (Por Mês / Ano)</h2>
+          <h2>1. EVOLUÇÃO DO PAGAMENTO (Por Mês / Ano)</h2>
           <div class="chart-container" style="height: 350px;">
             <canvas id="chartFaturamentoMes"></canvas>
           </div>
@@ -411,7 +405,7 @@
           </div>
         </div>
         <div class="card">
-          <h2>3. FATURAMENTO POR FORMA DE PAGAMENTO</h2>
+          <h2>3. PAGAMENTO POR FORMA DE PAGAMENTO</h2>
           <div class="chart-container">
             <canvas id="chartFormaPagamento"></canvas>
           </div>
@@ -419,11 +413,10 @@
       </div>
     </div>
 
-    <!-- Aba 2: Vendedores & Revendas -->
     <div id="executivos" class="tab-content">
       <div class="dashboard-grid">
         <div class="card full-width">
-          <h2>4. FATURAMENTO POR VENDEDOR (Nome Executivo x Valor Total)</h2>
+          <h2>4. PAGAMENTO POR VENDEDOR (Nome Executivo x Valor Total)</h2>
           <div class="chart-container" style="height: 350px;">
             <canvas id="chartVendedores"></canvas>
           </div>
@@ -443,23 +436,22 @@
       </div>
     </div>
 
-    <!-- Aba 3: Distribuidores & Canais -->
     <div id="distribuidores" class="tab-content">
       <div class="dashboard-grid">
         <div class="card full-width">
-          <h2>7. FATURAMENTO POR DISTRIBUIDOR NO PERÍODO</h2>
+          <h2>7. PAGAMENTO POR DISTRIBUIDOR NO PERÍODO</h2>
           <div class="chart-container" style="height: 380px;">
             <canvas id="chartDistribuidoresMes"></canvas>
           </div>
         </div>
         <div class="card">
-          <h2>8. SHARE DE FATURAMENTO POR DISTRIBUIDOR</h2>
+          <h2>8. SHARE DE PAGAMENTO POR DISTRIBUIDOR</h2>
           <div class="chart-container">
             <canvas id="chartDistribuidoresTotal"></canvas>
           </div>
         </div>
         <div class="card">
-          <h2>9. DISTRIBUIÇÃO GEOGRÁFICA (Faturamento por UF)</h2>
+          <h2>9. DISTRIBUIÇÃO GEOGRÁFICA (Pagamento por UF)</h2>
           <div class="chart-container">
             <canvas id="chartUf"></canvas>
           </div>
@@ -467,7 +459,6 @@
       </div>
     </div>
 
-    <!-- Aba 4: Base de Dados -->
     <div id="dados" class="tab-content">
       <div class="table-container">
         <h2 style="margin-bottom: 1rem; color: var(--intelbras-dark);">Base do Google Sheets Filtrada em Tempo Real</h2>
@@ -485,9 +476,9 @@
     const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQOiLkeVnkeppFPBEDRmFPdwElbO7Z8aP_DBDtKdAAn61xqHi-uCkhMg3tRaEa-PEm9xkj9wyPUa-tS/pub?gid=0&single=true&output=csv';
 
     const mesNomes = {
-      "1": "Janeiro", "2": "Fevereiro", "3": "Março", "4": "Abril",
-      "5": "Maio", "6": "Junho", "7": "Julho", "8": "Agosto",
-      "9": "Setembro", "10": "Outubro", "11": "Novembro", "12": "Dezembro"
+      1: "Janeiro", 2: "Fevereiro", 3: "Março", 4: "Abril",
+      5: "Maio", 6: "Junho", 7: "Julho", 8: "Agosto",
+      9: "Setembro", 10: "Outubro", 11: "Novembro", 12: "Dezembro"
     };
 
     let rawData = [];
@@ -562,14 +553,14 @@
       const anos = new Set();
 
       data.forEach(row => {
-        const anoVal = (row[colAno] || '').toString().trim();
-        if (anoVal && !isNaN(anoVal)) {
+        const anoVal = parseInt((row[colAno] || '').toString().trim(), 10);
+        if (!isNaN(anoVal)) {
           anos.add(anoVal);
         }
       });
 
       const selectAno = document.getElementById('selectAno');
-      Array.from(anos).sort().reverse().forEach(ano => {
+      Array.from(anos).sort((a, b) => a - b).forEach(ano => {
         const opt = document.createElement('option');
         opt.value = ano;
         opt.innerText = ano;
@@ -665,23 +656,34 @@
       const revendasSet = new Set();
       const distribuidoresSet = new Set();
 
-      const fatPorMesAno = {};
+      const periodosMap = {}; // Estrutura para ordenar por YYYY-MM
       const fatPorExecutivo = {};
-      const revendasPorMesAno = {};
       const topRevendas = {};
       const fatPorDistribuidor = {};
-      const fatDistPorMesAno = {};
+      const fatDistPorPeriodo = {};
       const situacaoCount = {};
       const formaPagCount = {};
       const ufCount = {};
 
       data.forEach(row => {
         const valor = parseValue(row[colValorTotal]);
-        const numMes = (row[colMes] || '').toString().trim();
-        const strAno = (row[colAno] || '').toString().trim();
+        const numMes = parseInt((row[colMes] || '0').toString().trim(), 10);
+        const numAno = parseInt((row[colAno] || '0').toString().trim(), 10);
         
-        const nomeMes = mesNomes[numMes] || (numMes ? `Mês ${numMes}` : 'N/D');
-        const chaveTempo = strAno ? `${nomeMes}/${strAno}` : nomeMes;
+        let pKey = "0000-00";
+        let labelTempo = "N/D";
+        
+        if (numMes >= 1 && numMes <= 12) {
+          const nomeM = mesNomes[numMes];
+          const mm = numMes < 10 ? '0' + numMes : '' + numMes;
+          if (numAno > 0) {
+            pKey = `${numAno}-${mm}`;
+            labelTempo = `${nomeM}/${numAno}`;
+          } else {
+            pKey = `0000-${mm}`;
+            labelTempo = nomeM;
+          }
+        }
 
         const executivo = row[colExecutivo] || 'Não Identificado';
         const revenda = row[colRevenda] || 'Não Identificado';
@@ -695,22 +697,31 @@
         if (revenda !== 'Não Identificado') revendasSet.add(revenda);
         if (distribuidor !== 'Direto / Outros') distribuidoresSet.add(distribuidor);
 
-        fatPorMesAno[chaveTempo] = (fatPorMesAno[chaveTempo] || 0) + valor;
+        if (!periodosMap[pKey]) {
+          periodosMap[pKey] = { key: pKey, label: labelTempo, valor: 0, revendas: new Set() };
+        }
+        periodosMap[pKey].valor += valor;
+        if (revenda !== 'Não Identificado') {
+          periodosMap[pKey].revendas.add(revenda);
+        }
+
         fatPorExecutivo[executivo] = (fatPorExecutivo[executivo] || 0) + valor;
-
-        if (!revendasPorMesAno[chaveTempo]) revendasPorMesAno[chaveTempo] = new Set();
-        if (revenda !== 'Não Identificado') revendasPorMesAno[chaveTempo].add(revenda);
-
         topRevendas[revenda] = (topRevendas[revenda] || 0) + valor;
         fatPorDistribuidor[distribuidor] = (fatPorDistribuidor[distribuidor] || 0) + valor;
 
-        if (!fatDistPorMesAno[distribuidor]) fatDistPorMesAno[distribuidor] = {};
-        fatDistPorMesAno[distribuidor][chaveTempo] = (fatDistPorMesAno[distribuidor][chaveTempo] || 0) + valor;
+        if (!fatDistPorPeriodo[distribuidor]) fatDistPorPeriodo[distribuidor] = {};
+        fatDistPorPeriodo[distribuidor][pKey] = (fatDistPorPeriodo[distribuidor][pKey] || 0) + valor;
 
         situacaoCount[situacao] = (situacaoCount[situacao] || 0) + 1;
         formaPagCount[formaPag] = (formaPagCount[formaPag] || 0) + valor;
         ufCount[uf] = (ufCount[uf] || 0) + valor;
       });
+
+      // Ordena rigorosamente os períodos em ordem cronológica (YYYY-MM)
+      const periodosOrdenados = Object.keys(periodosMap).sort().map(k => periodosMap[k]);
+      const labelsTempo = periodosOrdenados.map(p => p.label);
+      const valoresTempo = periodosOrdenados.map(p => p.valor);
+      const revendasTempo = periodosOrdenados.map(p => p.revendas.size);
 
       // Atualiza KPIs
       $('#kpiFaturamento').text(formatBRL(totalFaturamento));
@@ -718,17 +729,15 @@
       $('#kpiRevendas').text(revendasSet.size);
       $('#kpiDistribuidores').text(distribuidoresSet.size);
 
-      const labelsTempo = Object.keys(fatPorMesAno);
-
-      // 1. Faturamento Mês/Ano
+      // 1. Pagamento Mês/Ano (Ordenado de Janeiro a Dezembro)
       destroyChart('chartFaturamentoMes');
       chartInstances['chartFaturamentoMes'] = new Chart(document.getElementById('chartFaturamentoMes'), {
         type: 'line',
         data: {
           labels: labelsTempo,
           datasets: [{
-            label: 'Faturamento Total (R$)',
-            data: Object.values(fatPorMesAno),
+            label: 'Pagamento Total (R$)',
+            data: valoresTempo,
             borderColor: green,
             backgroundColor: 'rgba(0, 163, 73, 0.1)',
             fill: true,
@@ -778,7 +787,7 @@
         type: 'bar',
         data: {
           labels: vendedoresSorted.map(v => v[0]),
-          datasets: [{ label: 'Faturamento por Executivo (R$)', data: vendedoresSorted.map(v => v[1]), backgroundColor: green }]
+          datasets: [{ label: 'Pagamento por Executivo (R$)', data: vendedoresSorted.map(v => v[1]), backgroundColor: green }]
         },
         options: {
           responsive: true,
@@ -789,12 +798,11 @@
 
       // 5. Revendas Únicas
       destroyChart('chartRevendasMes');
-      const revendasCountTempo = labelsTempo.map(t => revendasPorMesAno[t] ? revendasPorMesAno[t].size : 0);
       chartInstances['chartRevendasMes'] = new Chart(document.getElementById('chartRevendasMes'), {
         type: 'bar',
         data: {
           labels: labelsTempo,
-          datasets: [{ label: 'Nº de Revendas Distintas', data: revendasCountTempo, backgroundColor: '#0284C7' }]
+          datasets: [{ label: 'Nº de Revendas Distintas', data: revendasTempo, backgroundColor: '#0284C7' }]
         },
         options: { responsive: true, maintainAspectRatio: false }
       });
@@ -821,7 +829,7 @@
       const distList = Object.keys(fatPorDistribuidor);
       const datasetsDist = distList.map((dist, idx) => ({
         label: dist,
-        data: labelsTempo.map(t => fatDistPorMesAno[dist][t] || 0),
+        data: periodosOrdenados.map(p => fatDistPorPeriodo[dist][p.key] || 0),
         backgroundColor: palette[idx % palette.length]
       }));
 
@@ -857,7 +865,7 @@
         type: 'bar',
         data: {
           labels: Object.keys(ufCount),
-          datasets: [{ label: 'Faturamento por Estado (R$)', data: Object.values(ufCount), backgroundColor: grayAccent }]
+          datasets: [{ label: 'Pagamento por Estado (R$)', data: Object.values(ufCount), backgroundColor: grayAccent }]
         },
         options: {
           responsive: true,
