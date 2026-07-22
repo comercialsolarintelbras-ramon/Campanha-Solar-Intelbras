@@ -1,652 +1,701 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Executivo de Vendas</title>
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- PapaParse for CSV parsing -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
-    <!-- FontAwesome for Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        body {
-            background-color: #0f172a;
-            color: #f1f5f9;
-            font-family: 'Inter', sans-serif;
-        }
-        .card {
-            background-color: #1e293b;
-            border: 1px solid #334155;
-            border-radius: 0.75rem;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard de Vendas e Faturamento - Intelbras</title>
+  
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+  <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+  <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+
+  <style>
+    :root {
+      --intelbras-green: #00A349;
+      --intelbras-green-dark: #00853B;
+      --intelbras-green-light: #E6F6ED;
+      --intelbras-dark: #1F2937;
+      --intelbras-bg: #F4F6F8;
+      --intelbras-card-bg: #FFFFFF;
+      --intelbras-text: #374151;
+      --intelbras-border: #E5E7EB;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    body {
+      background-color: var(--intelbras-bg);
+      color: var(--intelbras-text);
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    /* Cabeçalho */
+    header {
+      background-color: var(--intelbras-dark);
+      color: #FFFFFF;
+      padding: 1.2rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 4px solid var(--intelbras-green);
+      box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+    }
+
+    header h1 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    header h1 span {
+      color: var(--intelbras-green);
+      font-weight: 800;
+      letter-spacing: -0.5px;
+    }
+
+    .header-badge {
+      background-color: rgba(255, 255, 255, 0.1);
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      background-color: var(--intelbras-green);
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    /* Navegação de Abas */
+    .tabs-container {
+      background-color: #FFFFFF;
+      padding: 0 2rem;
+      border-bottom: 1px solid var(--intelbras-border);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+
+    .tabs {
+      display: flex;
+      gap: 15px;
+      list-style: none;
+      overflow-x: auto;
+    }
+
+    .tab-button {
+      padding: 1rem 1.2rem;
+      background: none;
+      border: none;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #6B7280;
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .tab-button:hover {
+      color: var(--intelbras-green);
+    }
+
+    .tab-button.active {
+      color: var(--intelbras-green);
+      border-bottom-color: var(--intelbras-green);
+    }
+
+    /* Conteúdo Principal */
+    main {
+      padding: 2rem;
+      flex: 1;
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    /* Cards de Métricas Principais (KPIs) */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1.2rem;
+      margin-bottom: 1.8rem;
+    }
+
+    .kpi-card {
+      background-color: var(--intelbras-card-bg);
+      border-radius: 8px;
+      padding: 1.2rem 1.5rem;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+      border-left: 5px solid var(--intelbras-green);
+    }
+
+    .kpi-title {
+      font-size: 0.85rem;
+      color: #6B7280;
+      text-transform: uppercase;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+
+    .kpi-value {
+      font-size: 1.6rem;
+      font-weight: 800;
+      color: var(--intelbras-dark);
+    }
+
+    .kpi-sub {
+      font-size: 0.8rem;
+      color: #9CA3AF;
+      margin-top: 0.3rem;
+    }
+
+    /* Cards e Layout dos Gráficos */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .full-width {
+      grid-column: 1 / -1;
+    }
+
+    .card {
+      background-color: var(--intelbras-card-bg);
+      border-radius: 8px;
+      padding: 1.5rem;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+      border: 1px solid var(--intelbras-border);
+    }
+
+    .card h2 {
+      font-size: 1.1rem;
+      margin-bottom: 1.2rem;
+      color: var(--intelbras-dark);
+      border-left: 4px solid var(--intelbras-green);
+      padding-left: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .chart-container {
+      position: relative;
+      height: 320px;
+    }
+
+    /* Estilização da Tabela de Dados */
+    .table-container {
+      background-color: var(--intelbras-card-bg);
+      padding: 1.5rem;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+      border: 1px solid var(--intelbras-border);
+      overflow-x: auto;
+    }
+
+    table.dataTable thead th {
+      background-color: var(--intelbras-dark);
+      color: #FFFFFF !important;
+      font-size: 0.9rem;
+      padding: 10px;
+    }
+
+    table.dataTable tbody td {
+      font-size: 0.85rem;
+    }
+
+    /* Status de Carregamento */
+    #loading {
+      text-align: center;
+      padding: 4rem 2rem;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+
+    .spinner {
+      border: 4px solid rgba(0, 0, 0, 0.1);
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border-left-color: var(--intelbras-green);
+      animation: spin 1s linear infinite;
+      margin: 0 auto 1rem auto;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
 </head>
-<body class="p-4 md:p-6">
+<body>
 
-    <!-- Header -->
-    <div class="flex flex-col md:flex-row justify-between items-center mb-6 pb-4 border-b border-slate-700 gap-4">
-        <div>
-            <h1 class="text-2xl md:text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-sky-400">
-                Dashboard Comercial & Performance
-            </h1>
-            <p class="text-xs md:text-sm text-slate-400 mt-1">Sincronizado diretamente com a base de dados do Google Sheets</p>
-        </div>
-        <div class="flex items-center gap-3">
-            <button id="btnReload" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 transition-colors rounded-lg font-medium text-sm flex items-center gap-2">
-                <i class="fas fa-sync-alt animate-spin-hover"></i> Atualizar Dados
-            </button>
-            <span id="statusBadge" class="px-3 py-1 bg-amber-500/20 text-amber-400 text-xs font-semibold rounded-full border border-amber-500/30">
-                Carregando...
-            </span>
-        </div>
+  <header>
+    <h1><span>intelbras</span> Dashboard Corporativo de Vendas</h1>
+    <div class="header-badge">
+      <span class="status-dot"></span>
+      <span id="status">Sincronizando dados...</span>
+    </div>
+  </header>
+
+  <div class="tabs-container">
+    <ul class="tabs">
+      <li><button class="tab-button active" onclick="openTab('graficos')">📊 Panorâmica de Faturamento</button></li>
+      <li><button class="tab-button" onclick="openTab('executivos')">👥 Vendedores & Revendas</button></li>
+      <li><button class="tab-button" onclick="openTab('distribuidores')">🏢 Distribuidores & Canais</button></li>
+      <li><button class="tab-button" onclick="openTab('dados')">📁 Base de Dados Completa</button></li>
+    </ul>
+  </div>
+
+  <main>
+    <div id="loading">
+      <div class="spinner"></div>
+      <h3 style="color: var(--intelbras-dark);">Carregando relatório do Google Sheets...</h3>
+      <p style="color: #6B7280; margin-top: 5px;">Processando faturamento, executivos, revendas e distribuidores.</p>
     </div>
 
-    <!-- KPI Summary Row -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <div class="card p-4 flex items-center justify-between">
-            <div>
-                <p class="text-xs text-slate-400 uppercase font-semibold">Faturamento Total</p>
-                <h3 id="kpiFaturamento" class="text-xl md:text-2xl font-bold mt-1 text-emerald-400">R$ 0,00</h3>
-            </div>
-            <div class="p-3 bg-emerald-500/10 text-emerald-400 rounded-lg"><i class="fas fa-dollar-sign text-xl"></i></div>
-        </div>
-        <div class="card p-4 flex items-center justify-between">
-            <div>
-                <p class="text-xs text-slate-400 uppercase font-semibold">Total de Pedidos</p>
-                <h3 id="kpiPedidos" class="text-xl md:text-2xl font-bold mt-1 text-sky-400">0</h3>
-            </div>
-            <div class="p-3 bg-sky-500/10 text-sky-400 rounded-lg"><i class="fas fa-shopping-cart text-xl"></i></div>
-        </div>
-        <div class="card p-4 flex items-center justify-between">
-            <div>
-                <p class="text-xs text-slate-400 uppercase font-semibold">Potência Total (kWp)</p>
-                <h3 id="kpiPotencia" class="text-xl md:text-2xl font-bold mt-1 text-amber-400">0 kWp</h3>
-            </div>
-            <div class="p-3 bg-amber-500/10 text-amber-400 rounded-lg"><i class="fas fa-solar-panel text-xl"></i></div>
-        </div>
-        <div class="card p-4 flex items-center justify-between">
-            <div>
-                <p class="text-xs text-slate-400 uppercase font-semibold">Ticket Médio</p>
-                <h3 id="kpiTicket" class="text-xl md:text-2xl font-bold mt-1 text-purple-400">R$ 0,00</h3>
-            </div>
-            <div class="p-3 bg-purple-500/10 text-purple-400 rounded-lg"><i class="fas fa-chart-line text-xl"></i></div>
-        </div>
+    <div id="kpiSection" class="kpi-grid" style="display: none;">
+      <div class="kpi-card">
+        <div class="kpi-title">Faturamento Total</div>
+        <div class="kpi-value" id="kpiFaturamento">R$ 0,00</div>
+        <div class="kpi-sub">Soma do Valor Total</div>
+      </div>
+      <div class="kpi-card" style="border-left-color: #1F2937;">
+        <div class="kpi-title">Executivos Ativos</div>
+        <div class="kpi-value" id="kpiExecutivos">0</div>
+        <div class="kpi-sub">Vendedores registrados</div>
+      </div>
+      <div class="kpi-card" style="border-left-color: #00A349;">
+        <div class="kpi-title">Revendas Únicas</div>
+        <div class="kpi-value" id="kpiRevendas">0</div>
+        <div class="kpi-sub">Clientes parceiros comprando</div>
+      </div>
+      <div class="kpi-card" style="border-left-color: #3B82F6;">
+        <div class="kpi-title">Distribuidores</div>
+        <div class="kpi-value" id="kpiDistribuidores">0</div>
+        <div class="kpi-sub">Canais de distribuição</div>
+      </div>
     </div>
 
-    <!-- Grid Layout matching Image 2 -->
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        
-        <!-- Column Left: charts (7 cols on large screens) -->
-        <div class="lg:col-span-7 flex flex-col gap-6">
-            
-            <!-- Chart 1: TOTAL - META ONGRID e Resultado Faturado -->
-            <div class="card p-4">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="font-bold text-sm md:text-base text-slate-200 uppercase tracking-wider">TOTAL - META ONGRID e Resultado Faturado</h2>
-                    <span class="text-xs text-slate-400">Anual / Mensal</span>
-                </div>
-                <div class="relative h-64 md:h-80">
-                    <canvas id="chartMetaOngrid"></canvas>
-                </div>
-            </div>
-
-            <!-- Chart 2: Representatividade (%) -->
-            <div class="card p-4">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="font-bold text-sm md:text-base text-slate-200 uppercase tracking-wider">Representatividade (%)</h2>
-                    <span class="text-xs text-emerald-400">Distribuição vs Diretas</span>
-                </div>
-                <div class="relative h-48 md:h-56">
-                    <canvas id="chartRepresentatividade"></canvas>
-                </div>
-            </div>
-
-            <!-- Double Grid: Resultado Offgrid & Total Criadas -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <!-- Chart 3: Resultado Offgrid -->
-                <div class="card p-4">
-                    <h2 class="font-bold text-sm text-slate-200 uppercase tracking-wider mb-4">Resultado - Offgrid</h2>
-                    <div class="relative h-48 md:h-56">
-                        <canvas id="chartOffgrid"></canvas>
-                    </div>
-                </div>
-                <!-- Chart 4: Total Criadas -->
-                <div class="card p-4">
-                    <h2 class="font-bold text-sm text-slate-200 uppercase tracking-wider mb-4">Total de Propostas Criadas</h2>
-                    <div class="relative h-48 md:h-56">
-                        <canvas id="chartTotalCriadas"></canvas>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Chart 5: Possíveis Recorrentes e Recorrentes -->
-            <div class="card p-4">
-                <h2 class="font-bold text-sm text-slate-200 uppercase tracking-wider mb-4">Possíveis Recorrentes e Recorrentes</h2>
-                <div class="relative h-56">
-                    <canvas id="chartRecorrentes"></canvas>
-                </div>
-            </div>
-
+    <div id="graficos" class="tab-content">
+      <div class="dashboard-grid">
+        <div class="card full-width">
+          <h2>1. EVOLUÇÃO DO FATURAMENTO MENSAL (Valor Total por Data de Pagamento)</h2>
+          <div class="chart-container" style="height: 350px;">
+            <canvas id="chartFaturamentoMes"></canvas>
+          </div>
         </div>
-
-        <!-- Column Right: Tables and detailed segments (5 cols on large screens) -->
-        <div class="lg:col-span-5 flex flex-col gap-6">
-
-            <!-- Chart 6: Revendas CHURN e Fidelização -->
-            <div class="card p-4">
-                <h2 class="font-bold text-sm text-slate-200 uppercase tracking-wider mb-4">Revendas - CHURN e Fidelização</h2>
-                <div class="relative h-48">
-                    <canvas id="chartChurn"></canvas>
-                </div>
-            </div>
-
-            <!-- Side-by-side Revendas Ativas e Positivadas Mini Charts -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div class="card p-3">
-                    <h3 class="text-xs text-slate-400 uppercase font-semibold mb-2">Revendas Ativas</h3>
-                    <div class="relative h-32">
-                        <canvas id="chartRevendasAtivas"></canvas>
-                    </div>
-                </div>
-                <div class="card p-3">
-                    <h3 class="text-xs text-slate-400 uppercase font-semibold mb-2">Revendas Positivadas</h3>
-                    <div class="relative h-32">
-                        <canvas id="chartRevendasPositivadas"></canvas>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Table 1: Região % Vendas - Geral -->
-            <div class="card p-4">
-                <h2 class="font-bold text-sm text-slate-200 uppercase tracking-wider mb-3">Vendas por Região</h2>
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left text-xs border-collapse">
-                        <thead>
-                            <tr class="border-b border-slate-700 bg-slate-800 text-slate-300">
-                                <th class="p-2 font-semibold">Região</th>
-                                <th class="p-2 font-semibold text-right">(%) Vendas - Geral</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tableRegiao">
-                            <tr><td colspan="2" class="p-3 text-center text-slate-500">Aguardando dados...</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- Table 2: Vendedores - Distribuição -->
-            <div class="card p-4">
-                <h2 class="font-bold text-sm text-slate-200 uppercase tracking-wider mb-3">Vendedores - Distribuição (Top 10)</h2>
-                <div class="overflow-x-auto max-h-96 overflow-y-auto">
-                    <table class="w-full text-left text-xs border-collapse">
-                        <thead class="sticky top-0 bg-slate-800 text-slate-300 z-10">
-                            <tr class="border-b border-slate-700">
-                                <th class="p-2 font-semibold">Vendedor</th>
-                                <th class="p-2 font-semibold text-right">Faturado</th>
-                                <th class="p-2 font-semibold text-right">Carteira</th>
-                                <th class="p-2 font-semibold text-right">Realizado %</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tableVendedores">
-                            <tr><td colspan="4" class="p-3 text-center text-slate-500">Aguardando dados...</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
+        <div class="card">
+          <h2>2. DISTRIBUIÇÃO POR SITUAÇÃO DO PEDIDO</h2>
+          <div class="chart-container">
+            <canvas id="chartSituacao"></canvas>
+          </div>
         </div>
-
+        <div class="card">
+          <h2>3. FATURAMENTO POR FORMA DE PAGAMENTO</h2>
+          <div class="chart-container">
+            <canvas id="chartFormaPagamento"></canvas>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <!-- JavaScript Data Logic -->
-    <script>
-        // Use proxy or direct URL for CSV sheet data
-        const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSqx7U2cl8xkvdvfvonO93y4Tl6dJi9es4SxABFOwTbqnnlgOUP2TPLKTy-_wKCAIr7og_5N9oVopdv/pub?gid=1490199678&single=true&output=csv";
+    <div id="executivos" class="tab-content">
+      <div class="dashboard-grid">
+        <div class="card full-width">
+          <h2>4. FATURAMENTO POR VENDEDOR (Nome Executivo x Valor Total)</h2>
+          <div class="chart-container" style="height: 350px;">
+            <canvas id="chartVendedores"></canvas>
+          </div>
+        </div>
+        <div class="card">
+          <h2>5. REVENDAS ÚNICAS QUE COMPRARAM POR MÊS</h2>
+          <div class="chart-container">
+            <canvas id="chartRevendasMes"></canvas>
+          </div>
+        </div>
+        <div class="card">
+          <h2>6. TOP 10 REVENDAS POR VOLUME DE COMPRAS</h2>
+          <div class="chart-container">
+            <canvas id="chartTopRevendas"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
 
-        // Global state for charts
-        let charts = {};
+    <div id="distribuidores" class="tab-content">
+      <div class="dashboard-grid">
+        <div class="card full-width">
+          <h2>7. FATURAMENTO MENSAL POR DISTRIBUIDOR (Comparativo)</h2>
+          <div class="chart-container" style="height: 380px;">
+            <canvas id="chartDistribuidoresMes"></canvas>
+          </div>
+        </div>
+        <div class="card">
+          <h2>8. SHARE DE FATURAMENTO POR DISTRIBUIDOR</h2>
+          <div class="chart-container">
+            <canvas id="chartDistribuidoresTotal"></canvas>
+          </div>
+        </div>
+        <div class="card">
+          <h2>9. DISTRIBUIÇÃO GEOGRÁFICA (Faturamento por UF)</h2>
+          <div class="chart-container">
+            <canvas id="chartUf"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
 
-        // Helper to format currency
-        const formatBRL = (val) => {
-            return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
-        };
+    <div id="dados" class="tab-content">
+      <div class="table-container">
+        <h2 style="margin-bottom: 1rem; color: var(--intelbras-dark);">Base do Google Sheets em Tempo Real</h2>
+        <table id="dataTable" class="display nowrap" style="width:100%">
+          <thead>
+            <tr id="tableHeader"></tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
 
-        // Parse custom Brazilian numeric format (e.g., "1.234,56" or "1234,56")
-        function parseBRLFloat(val) {
-            if (!val) return 0;
-            // Remove points (thousands), replace comma with dot (decimals)
-            let cleaned = val.toString().trim().replace(/\./g, '').replace(',', '.');
-            let parsed = parseFloat(cleaned);
-            return isNaN(parsed) ? 0 : parsed;
+  <script>
+    const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQOiLkeVnkeppFPBEDRmFPdwElbO7Z8aP_DBDtKdAAn61xqHi-uCkhMg3tRaEa-PEm9xkj9wyPUa-tS/pub?gid=0&single=true&output=csv';
+
+    function openTab(tabId) {
+      document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+      document.querySelectorAll('.tab-button').forEach(button => button.classList.remove('active'));
+      
+      document.getElementById(tabId).classList.add('active');
+      event.currentTarget.classList.add('active');
+    }
+
+    // Auxiliares de parsing e formatação
+    function parseValue(valStr) {
+      if (!valStr) return 0;
+      let clean = valStr.toString().replace('R$', '').replace(/\s/g, '');
+      if (clean.includes(',') && clean.includes('.')) {
+        clean = clean.replace(/\./g, '').replace(',', '.');
+      } else if (clean.includes(',')) {
+        clean = clean.replace(',', '.');
+      }
+      const parsed = parseFloat(clean);
+      return isNaN(parsed) ? 0 : parsed;
+    }
+
+    function formatBRL(val) {
+      return val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    }
+
+    function parseDateMonth(dateStr) {
+      if (!dateStr || dateStr.includes('#')) return 'Não Informado';
+      const parts = dateStr.split(' ')[0].split('/');
+      if (parts.length === 3) {
+        return `${parts[1]}/${parts[2]}`; // Retorna MM/AAAA
+      }
+      return 'Não Informado';
+    }
+
+    // Busca de colunas com suporte a variações de nomes
+    function findCol(headers, targets) {
+      for (let t of targets) {
+        const found = headers.find(h => h && h.trim().toLowerCase() === t.toLowerCase());
+        if (found) return found;
+      }
+      for (let t of targets) {
+        const found = headers.find(h => h && h.trim().toLowerCase().includes(t.toLowerCase()));
+        if (found) return found;
+      }
+      return null;
+    }
+
+    $(document).ready(function() {
+      Papa.parse(csvUrl, {
+        download: true,
+        header: true,
+        skipEmptyLines: true,
+        complete: function(results) {
+          const data = results.data;
+          const headers = results.meta.fields;
+
+          document.getElementById('loading').style.display = 'none';
+          document.getElementById('kpiSection').style.display = 'grid';
+          document.getElementById('graficos').classList.add('active');
+          document.getElementById('status').innerText = 'Sincronizado';
+
+          buildTable(headers, data);
+          buildDashboards(headers, data);
+        },
+        error: function(err) {
+          document.getElementById('loading').innerHTML = '<h3 style="color:red;">Erro ao carregar a planilha. Verifique a publicação do link CSV.</h3>';
+          console.error(err);
         }
+      });
+    });
 
-        // DOM elements
-        const statusBadge = document.getElementById('statusBadge');
-        const btnReload = document.getElementById('btnReload');
+    function buildTable(headers, data) {
+      const headerRow = $('#tableHeader');
+      const body = $('#tableBody');
 
-        // Fetch and process data
-        async function loadDashboardData() {
-            statusBadge.innerText = 'Buscando...';
-            statusBadge.className = "px-3 py-1 bg-amber-500/20 text-amber-400 text-xs font-semibold rounded-full border border-amber-500/30";
-            
-            Papa.parse(SHEET_CSV_URL, {
-                download: true,
-                header: true,
-                skipEmptyLines: true,
-                complete: function(results) {
-                    try {
-                        const rawData = results.data;
-                        if (!rawData || rawData.length === 0) {
-                            throw new Error("CSV retornou vazio.");
-                        }
-                        processAndRender(rawData);
-                        statusBadge.innerText = 'Sincronizado';
-                        statusBadge.className = "px-3 py-1 bg-emerald-500/20 text-emerald-400 text-xs font-semibold rounded-full border border-emerald-500/30";
-                    } catch (e) {
-                        console.error(e);
-                        statusBadge.innerText = 'Erro ao ler dados';
-                        statusBadge.className = "px-3 py-1 bg-red-500/20 text-red-400 text-xs font-semibold rounded-full border border-red-500/30";
-                        renderDummyData();
-                    }
-                },
-                error: function(err) {
-                    console.error("PapaParse error:", err);
-                    statusBadge.innerText = 'Falha de Conexão';
-                    statusBadge.className = "px-3 py-1 bg-red-500/20 text-red-400 text-xs font-semibold rounded-full border border-red-500/30";
-                    renderDummyData();
-                }
-            });
+      headers.forEach(header => {
+        headerRow.append(`<th>${header}</th>`);
+      });
+
+      data.forEach(row => {
+        let tr = '<tr>';
+        headers.forEach(header => {
+          tr += `<td>${row[header] || ''}</td>`;
+        });
+        tr += '</tr>';
+        body.append(tr);
+      });
+
+      $('#dataTable').DataTable({
+        language: {
+          url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/pt-BR.json'
+        },
+        pageLength: 10,
+        scrollX: true
+      });
+    }
+
+    function buildDashboards(headers, data) {
+      // Mapeamento automático das colunas identificadas no relatório da foto
+      const colValorTotal = findCol(headers, ['Valor Total', 'Valor Total ', 'Valor Pag']) || headers[7];
+      const colDataPag = findCol(headers, ['Data Pagamento', 'Data Pag', 'Data Categoria', 'Data Criação']) || headers[37] || headers[5];
+      const colExecutivo = findCol(headers, ['Nome Executivo', 'Executivo', 'Vendedor', 'Criado Por']) || headers[22];
+      const colRevenda = findCol(headers, ['Nome Cliente', 'Cliente Principal', 'Nome Revenda', 'Cliente']) || headers[24];
+      const colDistribuidor = findCol(headers, ['Nome Distribuidor', 'Nome Dis', 'Distribuidor']) || headers[32];
+      const colSituacao = findCol(headers, ['Situação Pedido', 'Situação', 'Situação F']) || headers[34];
+      const colFormaPag = findCol(headers, ['Forma Pagamento', 'Forma Pag', 'Forma P']) || headers[35];
+      const colUF = findCol(headers, ['UF', 'Estado']) || headers[28];
+
+      // Paleta Intelbras
+      const green = '#00A349';
+      const greenDark = '#006C30';
+      const darkBg = '#1F2937';
+      const grayAccent = '#4B5563';
+      const palette = ['#00A349', '#1F2937', '#0284C7', '#F59E0B', '#10B981', '#6366F1', '#EC4899', '#8B5CF6'];
+
+      // Variáveis de acumulação
+      let totalFaturamento = 0;
+      const executivosSet = new Set();
+      const revendasSet = new Set();
+      const distribuidoresSet = new Set();
+
+      const fatPorMes = {};
+      const fatPorExecutivo = {};
+      const revendasPorMes = {};
+      const topRevendas = {};
+      const fatPorDistribuidor = {};
+      const fatDistPorMes = {};
+      const situacaoCount = {};
+      const formaPagCount = {};
+      const ufCount = {};
+
+      data.forEach(row => {
+        const valor = parseValue(row[colValorTotal]);
+        const mes = parseDateMonth(row[colDataPag]);
+        const executivo = row[colExecutivo] || 'Não Identificado';
+        const revenda = row[colRevenda] || 'Não Identificado';
+        const distribuidor = row[colDistribuidor] || 'Direto / Outros';
+        const situacao = row[colSituacao] || 'Outros';
+        const formaPag = row[colFormaPag] || 'Outros';
+        const uf = row[colUF] || 'ND';
+
+        totalFaturamento += valor;
+        if (executivo !== 'Não Identificado') executivosSet.add(executivo);
+        if (revenda !== 'Não Identificado') revendasSet.add(revenda);
+        if (distribuidor !== 'Direto / Outros') distribuidoresSet.add(distribuidor);
+
+        // Agrupamentos
+        fatPorMes[mes] = (fatPorMes[mes] || 0) + valor;
+        fatPorExecutivo[executivo] = (fatPorExecutivo[executivo] || 0) + valor;
+
+        if (!revendasPorMes[mes]) revendasPorMes[mes] = new Set();
+        if (revenda !== 'Não Identificado') revendasPorMes[mes].add(revenda);
+
+        topRevendas[revenda] = (topRevendas[revenda] || 0) + valor;
+
+        fatPorDistribuidor[distribuidor] = (fatPorDistribuidor[distribuidor] || 0) + valor;
+
+        if (!fatDistPorMes[distribuidor]) fatDistPorMes[distribuidor] = {};
+        fatDistPorMes[distribuidor][mes] = (fatDistPorMes[distribuidor][mes] || 0) + valor;
+
+        situacaoCount[situacao] = (situacaoCount[situacao] || 0) + 1;
+        formaPagCount[formaPag] = (formaPagCount[formaPag] || 0) + valor;
+        ufCount[uf] = (ufCount[uf] || 0) + valor;
+      });
+
+      // Atualiza KPIs no topo
+      $('#kpiFaturamento').text(formatBRL(totalFaturamento));
+      $('#kpiExecutivos').text(executivosSet.size);
+      $('#kpiRevendas').text(revendasSet.size);
+      $('#kpiDistribuidores').text(distribuidoresSet.size);
+
+      // 1. Faturamento Mensal
+      const meses = Object.keys(fatPorMes);
+      new Chart(document.getElementById('chartFaturamentoMes'), {
+        type: 'line',
+        data: {
+          labels: meses,
+          datasets: [{
+            label: 'Faturamento Total (R$)',
+            data: Object.values(fatPorMes),
+            borderColor: green,
+            backgroundColor: 'rgba(0, 163, 73, 0.1)',
+            fill: true,
+            tension: 0.3,
+            borderWidth: 3,
+            pointRadius: 5,
+            pointBackgroundColor: green
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { tooltip: { callbacks: { label: ctx => ` ${formatBRL(ctx.raw)}` } } }
         }
+      });
 
-        // Process actual loaded data from Google Sheets
-        function processAndRender(data) {
-            // Metrics variables
-            let totalFaturamento = 0;
-            let totalPedidos = 0;
-            let totalPotencia = 0;
-            let regiaoCounts = {};
-            let vendedorData = {};
+      // 2. Situação do Pedido
+      new Chart(document.getElementById('chartSituacao'), {
+        type: 'doughnut',
+        data: {
+          labels: Object.keys(situacaoCount),
+          datasets: [{ data: Object.values(situacaoCount), backgroundColor: palette }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+      });
 
-            const monthlyData = {
-                'Jan': { faturado: 0, meta: 18000000, offgrid: 0, criadas: 18900 },
-                'Fev': { faturado: 0, meta: 19500000, offgrid: 0, criadas: 16500 },
-                'Mar': { faturado: 0, meta: 21000000, offgrid: 0, criadas: 17990 },
-                'Abr': { faturado: 0, meta: 22000000, offgrid: 0, criadas: 15900 },
-                'Mai': { faturado: 0, meta: 23500000, offgrid: 0, criadas: 15311 },
-                'Jun': { faturado: 0, meta: 25000000, offgrid: 0, criadas: 13864 },
-                'Jul': { faturado: 0, meta: 27000000, offgrid: 0, criadas: 7417 },
-                'Ago': { faturado: 0, meta: 28000000, offgrid: 0, criadas: 0 },
-                'Set': { faturado: 0, meta: 29000000, offgrid: 0, criadas: 0 },
-                'Out': { faturado: 0, meta: 30000000, offgrid: 0, criadas: 0 },
-                'Nov': { faturado: 0, meta: 31000000, offgrid: 0, criadas: 0 },
-                'Dez': { faturado: 0, meta: 32000000, offgrid: 0, criadas: 0 }
-            };
-
-            data.forEach(row => {
-                // Parse fields with fallback
-                const valorTotal = parseBRLFloat(row['Valor Total'] || row['Valor Total P']);
-                const potencia = parseBRLFloat(row['Potencia Sn']);
-                const estado = (row['Estado Clien'] || '').trim().toUpperCase();
-                const vendedor = row['EV'] || 'Não Definido';
-                const mesEscrito = (row['Mês - Escrito'] || '').substring(0,3);
-
-                totalFaturamento += valorTotal;
-                totalPotencia += potencia;
-                if (row['Pedido']) totalPedidos++;
-
-                // Region Mapping (Simplistic)
-                let regiao = 'Outros';
-                if (['SP', 'RJ', 'MG', 'ES'].includes(estado)) regiao = 'SUDESTE';
-                else if (['PR', 'SC', 'RS'].includes(estado)) regiao = 'SUL';
-                else if (['DF', 'GO', 'MT', 'MS'].includes(estado)) regiao = 'CENTRO-OESTE';
-                else if (['AL', 'BA', 'CE', 'MA', 'PB', 'PE', 'PI', 'RN', 'SE'].includes(estado)) regiao = 'NORDESTE';
-                else if (['AC', 'AM', 'AP', 'PA', 'RO', 'RR', 'TO'].includes(estado)) regiao = 'NORTE';
-
-                if (estado) {
-                    regiaoCounts[regiao] = (regiaoCounts[regiao] || 0) + valorTotal;
-                }
-
-                // Vendedor Grouping
-                if (!vendedorData[vendedor]) {
-                    vendedorData[vendedor] = { faturado: 0, carteira: 0, meta: 3000000 };
-                }
-                vendedorData[vendedor].faturado += valorTotal;
-
-                // Monthly metrics grouping
-                if (monthlyData[mesEscrito]) {
-                    monthlyData[mesEscrito].faturado += valorTotal;
-                    if (row['Etapa Venda'] === 'Produto entregue' && (row['Código Produto'] || '').includes('OFF')) {
-                        monthlyData[mesEscrito].offgrid += valorTotal;
-                    }
-                }
-            });
-
-            // Update main KPIs
-            document.getElementById('kpiFaturamento').innerText = formatBRL(totalFaturamento);
-            document.getElementById('kpiPedidos').innerText = totalPedidos.toLocaleString('pt-BR');
-            document.getElementById('kpiPotencia').innerText = `${totalPotencia.toLocaleString('pt-BR', {maximumFractionDigits: 1})} kWp`;
-            document.getElementById('kpiTicket').innerText = formatBRL(totalPedidos > 0 ? (totalFaturamento / totalPedidos) : 0);
-
-            // Render components
-            renderCharts(monthlyData);
-            renderTableRegiao(regiaoCounts, totalFaturamento);
-            renderTableVendedores(vendedorData);
+      // 3. Forma de Pagamento
+      new Chart(document.getElementById('chartFormaPagamento'), {
+        type: 'bar',
+        data: {
+          labels: Object.keys(formaPagCount),
+          datasets: [{ label: 'Valor Total (R$)', data: Object.values(formaPagCount), backgroundColor: darkBg }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { tooltip: { callbacks: { label: ctx => ` ${formatBRL(ctx.raw)}` } } }
         }
+      });
 
-        // Fallback or static representation based on the UI requested (Matches closely to Image 2)
-        function renderDummyData() {
-            // High fidelity mocking that perfectly mimics second dashboard image
-            const mockMonthly = {
-                'Jan': { faturado: 28500000, meta: 30000000, offgrid: 582470, criadas: 18959 },
-                'Fev': { faturado: 24200000, meta: 32574000, offgrid: 825470, criadas: 16523 },
-                'Mar': { faturado: 26316450, meta: 31445000, offgrid: 1261645, criadas: 17990 },
-                'Abr': { faturado: 22823253, meta: 33412000, offgrid: 1687471, criadas: 15902 },
-                'Mai': { faturado: 23263482, meta: 30100000, offgrid: 1252400, criadas: 15311 },
-                'Jun': { faturado: 24579000, meta: 28579000, offgrid: 626110, criadas: 13864 },
-                'Jul': { faturado: 12150150, meta: 20500000, offgrid: 304615, criadas: 7417 },
-                'Ago': { faturado: 0, meta: 28000000, offgrid: 0, criadas: 0 },
-                'Set': { faturado: 0, meta: 29000000, offgrid: 0, criadas: 0 },
-                'Out': { faturado: 0, meta: 30000000, offgrid: 0, criadas: 0 },
-                'Nov': { faturado: 0, meta: 31000000, offgrid: 0, criadas: 0 },
-                'Dez': { faturado: 0, meta: 32000000, offgrid: 0, criadas: 0 }
-            };
-
-            const mockRegioes = { 'SUL': 21.89, 'SUDESTE': 20.28, 'CENTRO-OESTE': 19.27, 'NORDESTE': 32.62, 'NORTE': 5.94 };
-            
-            const mockVendedores = {
-                'BEATRIZ MULLER BRAGA': { faturado: 3485120.00, carteira: 1810850.75, realizado: 37.75 },
-                'ANA PAULA': { faturado: 2000810.04, carteira: 1000782.10, realizado: 45.32 },
-                'GABRIELA GOULART EBERTZ': { faturado: 3288783.22, carteira: 1380882.10, realizado: 42.23 },
-                'CRISTHIAN ITALO ALVARENGA': { faturado: 3507453.78, carteira: 1148784.84, realizado: 32.79 },
-                'GENIVALDO PEREIRA DOS SANTOS': { faturado: 2232583.72, carteira: 220949.79, realizado: 9.90 },
-                'MARIA EDUARDA VENTURA': { faturado: 1855640.85, carteira: 728179.35, realizado: 39.24 },
-                'JOSEANI BORGES DOS SANTOS': { faturado: 1512255.82, carteira: 257852.12, realizado: 17.05 }
-            };
-
-            document.getElementById('kpiFaturamento').innerText = formatBRL(161832335);
-            document.getElementById('kpiPedidos').innerText = "1.482";
-            document.getElementById('kpiPotencia').innerText = "24.582,6 kWp";
-            document.getElementById('kpiTicket').innerText = formatBRL(109198);
-
-            renderCharts(mockMonthly);
-            renderTableRegiao(mockRegioes, null, true);
-            renderTableVendedores(mockVendedores, true);
+      // 4. Executivos / Vendedores
+      const vendedoresSorted = Object.entries(fatPorExecutivo).sort((a,b) => b[1] - a[1]);
+      new Chart(document.getElementById('chartVendedores'), {
+        type: 'bar',
+        data: {
+          labels: vendedoresSorted.map(v => v[0]),
+          datasets: [{ label: 'Faturamento por Executivo (R$)', data: vendedoresSorted.map(v => v[1]), backgroundColor: green }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { tooltip: { callbacks: { label: ctx => ` ${formatBRL(ctx.raw)}` } } }
         }
+      });
 
-        // Render Table Regioes
-        function renderTableRegiao(data, total = null, isMock = false) {
-            const tbody = document.getElementById('tableRegiao');
-            tbody.innerHTML = '';
-            
-            const entries = isMock ? Object.entries(data) : Object.entries(data).map(([k, v]) => [k, ((v / total) * 100).toFixed(2)]);
-            
-            entries.forEach(([regiao, pct]) => {
-                const tr = document.createElement('tr');
-                tr.className = "border-b border-slate-800 hover:bg-slate-800/50 transition-colors";
-                tr.innerHTML = `
-                    <td class="p-2 font-medium text-slate-300">${regiao}</td>
-                    <td class="p-2 text-right text-emerald-400 font-bold">${pct}%</td>
-                `;
-                tbody.appendChild(tr);
-            });
+      // 5. Revendas Únicas por Mês
+      const revendasCountMes = meses.map(m => revendasPorMes[m] ? revendasPorMes[m].size : 0);
+      new Chart(document.getElementById('chartRevendasMes'), {
+        type: 'bar',
+        data: {
+          labels: meses,
+          datasets: [{ label: 'Nº de Revendas Distintas', data: revendasCountMes, backgroundColor: '#0284C7' }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+      });
+
+      // 6. Top 10 Revendas
+      const topRevendasSorted = Object.entries(topRevendas).sort((a,b) => b[1] - a[1]).slice(0, 10);
+      new Chart(document.getElementById('chartTopRevendas'), {
+        type: 'bar',
+        indexAxis: 'y',
+        data: {
+          labels: topRevendasSorted.map(r => r[0]),
+          datasets: [{ label: 'Total Comprado (R$)', data: topRevendasSorted.map(r => r[1]), backgroundColor: greenDark }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { tooltip: { callbacks: { label: ctx => ` ${formatBRL(ctx.raw)}` } } }
         }
+      });
 
-        // Render Table Vendedores
-        function renderTableVendedores(data, isMock = false) {
-            const tbody = document.getElementById('tableVendedores');
-            tbody.innerHTML = '';
+      // 7. Distribuidores por Mês
+      const distList = Object.keys(fatPorDistribuidor);
+      const datasetsDist = distList.map((dist, idx) => ({
+        label: dist,
+        data: meses.map(m => fatDistPorMes[dist][m] || 0),
+        backgroundColor: palette[idx % palette.length]
+      }));
 
-            Object.entries(data).forEach(([vend, d]) => {
-                const faturadoVal = d.faturado;
-                const carteiraVal = d.carteira || 0;
-                const realizadoVal = isMock ? d.realizado : ((faturadoVal / d.meta) * 100).toFixed(2);
-
-                const tr = document.createElement('tr');
-                tr.className = "border-b border-slate-800 hover:bg-slate-800/50 transition-colors";
-                tr.innerHTML = `
-                    <td class="p-2 font-medium text-slate-300 max-w-[150px] truncate">${vend}</td>
-                    <td class="p-2 text-right text-slate-400">${formatBRL(faturadoVal)}</td>
-                    <td class="p-2 text-right text-slate-400">${formatBRL(carteiraVal)}</td>
-                    <td class="p-2 text-right font-bold ${realizadoVal > 35 ? 'text-emerald-400' : 'text-amber-400'}">${realizadoVal}%</td>
-                `;
-                tbody.appendChild(tr);
-            });
+      new Chart(document.getElementById('chartDistribuidoresMes'), {
+        type: 'bar',
+        data: { labels: meses, datasets: datasetsDist },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: { x: { stacked: true }, y: { stacked: true } },
+          plugins: { tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${formatBRL(ctx.raw)}` } } }
         }
+      });
 
-        // Chart Config & Rendering
-        function renderCharts(monthly) {
-            const months = Object.keys(monthly);
-            const faturados = months.map(m => monthly[m].faturado);
-            const metas = months.map(m => monthly[m].meta);
-            const offgrids = months.map(m => monthly[m].offgrid);
-            const criadas = months.map(m => monthly[m].criadas);
-
-            // Destroy existing charts to prevent overlaying bugs when reloaded
-            Object.values(charts).forEach(c => c.destroy());
-
-            // 1. Chart Meta Ongrid & Resultado Faturado
-            charts.metaOngrid = new Chart(document.getElementById('chartMetaOngrid'), {
-                type: 'bar',
-                data: {
-                    labels: months,
-                    datasets: [
-                        {
-                            label: 'Resultado Faturado',
-                            data: faturados,
-                            backgroundColor: '#10b981',
-                            borderRadius: 4
-                        },
-                        {
-                            label: 'Meta Ongrid',
-                            data: metas,
-                            backgroundColor: '#d97706',
-                            borderRadius: 4
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { labels: { color: '#94a3b8' } } },
-                    scales: {
-                        x: { grid: { display: false }, ticks: { color: '#94a3b8' } },
-                        y: { grid: { color: '#334155' }, ticks: { color: '#94a3b8' } }
-                    }
-                }
-            });
-
-            // 2. Chart Representatividade
-            charts.representatividade = new Chart(document.getElementById('chartRepresentatividade'), {
-                type: 'line',
-                data: {
-                    labels: months,
-                    datasets: [{
-                        label: '% Distribuição',
-                        data: months.map((m, i) => faturados[i] > 0 ? 80 + (Math.random() * 8) : null),
-                        borderColor: '#06b6d4',
-                        borderWidth: 3,
-                        fill: false,
-                        tension: 0.3
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        x: { grid: { display: false }, ticks: { color: '#94a3b8' } },
-                        y: { min: 0, max: 100, grid: { color: '#334155' }, ticks: { color: '#94a3b8' } }
-                    }
-                }
-            });
-
-            // 3. Chart Offgrid
-            charts.offgrid = new Chart(document.getElementById('chartOffgrid'), {
-                type: 'bar',
-                data: {
-                    labels: months.slice(0, 7),
-                    datasets: [{
-                        label: 'Faturamento Offgrid',
-                        data: offgrids.slice(0, 7),
-                        backgroundColor: '#10b981',
-                        borderRadius: 3
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        x: { grid: { display: false }, ticks: { color: '#94a3b8' } },
-                        y: { grid: { color: '#334155' }, ticks: { color: '#94a3b8' } }
-                    }
-                }
-            });
-
-            // 4. Chart Total Criadas
-            charts.totalCriadas = new Chart(document.getElementById('chartTotalCriadas'), {
-                type: 'bar',
-                data: {
-                    labels: months.slice(0, 7),
-                    datasets: [{
-                        label: 'Propostas Criadas',
-                        data: criadas.slice(0, 7),
-                        backgroundColor: '#059669',
-                        borderRadius: 3
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        x: { grid: { display: false }, ticks: { color: '#94a3b8' } },
-                        y: { grid: { color: '#334155' }, ticks: { color: '#94a3b8' } }
-                    }
-                }
-            });
-
-            // 5. Chart Recorrentes
-            charts.recorrentes = new Chart(document.getElementById('chartRecorrentes'), {
-                type: 'line',
-                data: {
-                    labels: months.slice(0, 7),
-                    datasets: [
-                        {
-                            label: 'Possíveis Recorrentes',
-                            data: [148, 175, 187, 189, 185, 159, 112],
-                            borderColor: '#3b82f6',
-                            fill: true,
-                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                            tension: 0.3
-                        },
-                        {
-                            label: 'Recorrentes',
-                            data: [136, 164, 168, 168, 140, 101, 0],
-                            borderColor: '#ef4444',
-                            fill: true,
-                            backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                            tension: 0.3
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { labels: { color: '#94a3b8' } } },
-                    scales: {
-                        x: { grid: { display: false }, ticks: { color: '#94a3b8' } },
-                        y: { grid: { color: '#334155' }, ticks: { color: '#94a3b8' } }
-                    }
-                }
-            });
-
-            // 6. Chart Churn
-            charts.churn = new Chart(document.getElementById('chartChurn'), {
-                type: 'line',
-                data: {
-                    labels: months.slice(0, 7),
-                    datasets: [
-                        {
-                            label: 'Manteve compra',
-                            data: [320, 310, 325, 290, 275, 305, 314],
-                            borderColor: '#10b981',
-                            tension: 0.2
-                        },
-                        {
-                            label: 'Comprou mês passado e deixou este',
-                            data: [359, 395, 377, 532, 282, 270, 0],
-                            borderColor: '#ef4444',
-                            tension: 0.2
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { labels: { color: '#94a3b8', boxWidth: 12 } } },
-                    scales: {
-                        x: { grid: { display: false }, ticks: { color: '#94a3b8' } },
-                        y: { grid: { color: '#334155' }, ticks: { color: '#94a3b8' } }
-                    }
-                }
-            });
-
-            // 7. Mini Chart Revendas Ativas
-            charts.revendasAtivas = new Chart(document.getElementById('chartRevendasAtivas'), {
-                type: 'bar',
-                data: {
-                    labels: months.slice(0, 7),
-                    datasets: [{
-                        data: [1272, 1260, 1256, 1248, 1210, 1032, 886],
-                        backgroundColor: '#0f766e',
-                        borderRadius: 2
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        x: { grid: { display: false }, ticks: { color: '#94a3b8', font: { size: 8 } } },
-                        y: { grid: { display: false }, ticks: { color: '#94a3b8', font: { size: 8 } } }
-                    }
-                }
-            });
-
-            // 8. Mini Chart Revendas Positivadas
-            charts.revendasPositivadas = new Chart(document.getElementById('chartRevendasPositivadas'), {
-                type: 'line',
-                data: {
-                    labels: months.slice(0, 7),
-                    datasets: [{
-                        data: [766, 684, 769, 618, 605, 433, 314],
-                        borderColor: '#10b981',
-                        borderWidth: 2,
-                        tension: 0.2
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        x: { grid: { display: false }, ticks: { color: '#94a3b8', font: { size: 8 } } },
-                        y: { grid: { display: false }, ticks: { color: '#94a3b8', font: { size: 8 } } }
-                    }
-                }
-            });
+      // 8. Share Distribuidores Total
+      new Chart(document.getElementById('chartDistribuidoresTotal'), {
+        type: 'pie',
+        data: {
+          labels: Object.keys(fatPorDistribuidor),
+          datasets: [{ data: Object.values(fatPorDistribuidor), backgroundColor: palette }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { tooltip: { callbacks: { label: ctx => `${ctx.label}: ${formatBRL(ctx.raw)}` } } }
         }
+      });
 
-        // Action Listener
-        btnReload.addEventListener('click', loadDashboardData);
-
-        // Initial Load
-        loadDashboardData();
-    </script>
+      // 9. Distribuição por UF
+      new Chart(document.getElementById('chartUf'), {
+        type: 'bar',
+        data: {
+          labels: Object.keys(ufCount),
+          datasets: [{ label: 'Faturamento por Estado (R$)', data: Object.values(ufCount), backgroundColor: grayAccent }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { tooltip: { callbacks: { label: ctx => ` ${formatBRL(ctx.raw)}` } } }
+        }
+      });
+    }
+  </script>
 </body>
 </html>
