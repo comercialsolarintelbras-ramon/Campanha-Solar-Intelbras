@@ -1,4 +1,3 @@
-HTML
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -411,25 +410,37 @@ HTML
             <canvas id="chartRevendasUnicasMes"></canvas>
           </div>
         </div>
+        <div class="card">
+          <h2>4. REVENDAS ENGAJADAS POR MÊS (COMPRAS NOS ÚLTIMOS 6 MESES)</h2>
+          <div class="chart-container">
+            <canvas id="chartRevendasEngajadasMes"></canvas>
+          </div>
+        </div>
+        <div class="card">
+          <h2>5. REVENDAS VIGENTES POR MÊS (COMPRAS NOS ÚLTIMOS 3 MESES)</h2>
+          <div class="chart-container">
+            <canvas id="chartRevendasVigentesMes"></canvas>
+          </div>
+        </div>
       </div>
     </div>
 
     <div id="executivos" class="tab-content">
       <div class="dashboard-grid">
         <div class="card full-width">
-          <h2>4. PAGAMENTO POR VENDEDOR (Nome Executivo x Valor Total)</h2>
+          <h2>6. PAGAMENTO POR VENDEDOR (Nome Executivo x Valor Total)</h2>
           <div class="chart-container" style="height: 350px;">
             <canvas id="chartVendedores"></canvas>
           </div>
         </div>
         <div class="card">
-          <h2>5. REVENDAS ÚNICAS QUE COMPRARAM NO PERÍODO</h2>
+          <h2>7. REVENDAS ÚNICAS QUE COMPRARAM NO PERÍODO</h2>
           <div class="chart-container">
             <canvas id="chartRevendasMes"></canvas>
           </div>
         </div>
         <div class="card">
-          <h2>6. TOP 10 REVENDAS POR VOLUME DE COMPRAS</h2>
+          <h2>8. TOP 10 REVENDAS POR VOLUME DE COMPRAS</h2>
           <div class="chart-container">
             <canvas id="chartTopRevendas"></canvas>
           </div>
@@ -440,19 +451,19 @@ HTML
     <div id="distribuidores" class="tab-content">
       <div class="dashboard-grid">
         <div class="card full-width">
-          <h2>7. PAGAMENTO POR DISTRIBUIDOR NO PERÍODO</h2>
+          <h2>9. PAGAMENTO POR DISTRIBUIDOR NO PERÍODO</h2>
           <div class="chart-container" style="height: 380px;">
             <canvas id="chartDistribuidoresMes"></canvas>
           </div>
         </div>
         <div class="card">
-          <h2>8. SHARE DE PAGAMENTO POR DISTRIBUIDOR</h2>
+          <h2>10. SHARE DE PAGAMENTO POR DISTRIBUIDOR</h2>
           <div class="chart-container">
             <canvas id="chartDistribuidoresTotal"></canvas>
           </div>
         </div>
         <div class="card">
-          <h2>9. DISTRIBUIÇÃO GEOGRÁFICA (Pagamento por UF)</h2>
+          <h2>11. DISTRIBUIÇÃO GEOGRÁFICA (Pagamento por UF)</h2>
           <div class="chart-container">
             <canvas id="chartUf"></canvas>
           </div>
@@ -666,6 +677,23 @@ HTML
       const formaPagCount = {};
       const ufCount = {};
 
+      // Mapeamento global de compras de revenda por período considerando toda a base rawData para fidelidade do histórico de engajamento/vigência
+      const revendasPorPeriodoGlobal = {};
+      rawData.forEach(row => {
+        const numMes = parseInt((row[colMes] || '0').toString().trim(), 10);
+        const numAno = parseInt((row[colAno] || '0').toString().trim(), 10);
+        const revenda = row[colRevenda] || 'Não Identificado';
+
+        if (numMes >= 1 && numMes <= 12 && revenda !== 'Não Identificado') {
+          const mm = numMes < 10 ? '0' + numMes : '' + numMes;
+          const pKey = numAno > 0 ? `${numAno}-${mm}` : `0000-${mm}`;
+          if (!revendasPorPeriodoGlobal[pKey]) {
+            revendasPorPeriodoGlobal[pKey] = new Set();
+          }
+          revendasPorPeriodoGlobal[pKey].add(revenda);
+        }
+      });
+
       data.forEach(row => {
         const valor = parseValue(row[colValorTotal]);
         const numMes = parseInt((row[colMes] || '0').toString().trim(), 10);
@@ -727,12 +755,58 @@ HTML
         ufCount[uf] = (ufCount[uf] || 0) + valor;
       });
 
-      // Ordena rigorosamente os períodos em ordem cronológica (YYYY-MM)
+      // Ordena rigorosamente todos os períodos globais ordenados por chave YYYY-MM
+      const todosPeriodosGlobais = Object.keys(revendasPorPeriodoGlobal).sort();
+
+      // Ordena rigorosamente os períodos em ordem cronológica (YYYY-MM) do filtro atual
       const periodosOrdenados = Object.keys(periodosMap).sort().map(k => periodosMap[k]);
       const labelsTempo = periodosOrdenados.map(p => p.label);
       const valoresTempo = periodosOrdenados.map(p => p.valor);
       const revendasTempo = periodosOrdenados.map(p => p.revendas.size);
       const distribuidoresTempo = periodosOrdenados.map(p => p.distribuidores.size);
+
+      // CÁLCULO DE REVENDAS ENGAJADAS E VIGENTES POR MÊS
+      const engajadasTempo = periodosOrdenados.map(p => {
+        const currKey = p.key;
+        const idxGlobal = todosPeriodosGlobais.indexOf(currKey);
+        if (idxGlobal < 5) {
+          // Se não há 5 meses anteriores no histórico global, calcula apenas com os períodos disponíveis existentes consecutivos
+          const subsetKeys = todosPeriodosGlobais.slice(0, idxGlobal + 1);
+          if (subsetKeys.length === 0) return 0;
+          const setAtual = revendasPorPeriodoGlobal[currKey] || new Set();
+          let count = 0;
+          setAtual.forEach(rev => {
+            const comprouEmTodos = subsetKeys.every(k => revendasPorPeriodoGlobal[k] && revendasPorPeriodoGlobal[k].has(rev));
+            if (comprouEmTodos) count++;
+          });
+          return count;
+        } else {
+          // Mês atual + 5 meses anteriores (total 6 meses consecutivos)
+          const subsetKeys = todosPeriodosGlobais.slice(idxGlobal - 5, idxGlobal + 1);
+          const setAtual = revendasPorPeriodoGlobal[currKey] || new Set();
+          let count = 0;
+          setAtual.forEach(rev => {
+            const comprouEmTodos = subsetKeys.every(k => revendasPorPeriodoGlobal[k] && revendasPorPeriodoGlobal[k].has(rev));
+            if (comprouEmTodos) count++;
+          });
+          return count;
+        }
+      });
+
+      const vigentesTempo = periodosOrdenados.map(p => {
+        const currKey = p.key;
+        const idxGlobal = todosPeriodosGlobais.indexOf(currKey);
+        const startIdx = Math.max(0, idxGlobal - 2);
+        const subsetKeys = todosPeriodosGlobais.slice(startIdx, idxGlobal + 1);
+        
+        const revendasVigentesNoPeriodo = new Set();
+        subsetKeys.forEach(k => {
+          if (revendasPorPeriodoGlobal[k]) {
+            revendasPorPeriodoGlobal[k].forEach(rev => revendasVigentesNoPeriodo.add(rev));
+          }
+        });
+        return revendasVigentesNoPeriodo.size;
+      });
 
       // Atualiza KPIs
       $('#kpiFaturamento').text(formatBRL(totalFaturamento));
@@ -811,7 +885,53 @@ HTML
         }
       });
 
-      // 4. Vendedores
+      // 4. Revendas Engajadas por Mês (Gráfico de Barras)
+      destroyChart('chartRevendasEngajadasMes');
+      chartInstances['chartRevendasEngajadasMes'] = new Chart(document.getElementById('chartRevendasEngajadasMes'), {
+        type: 'bar',
+        data: {
+          labels: labelsTempo,
+          datasets: [{
+            label: 'Revendas Engajadas (Ativas nos últimos 6 meses)',
+            data: engajadasTempo,
+            backgroundColor: '#10B981'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: { title: { display: true, text: 'Meses' } },
+            y: { title: { display: true, text: 'Número de Revendas Engajadas' }, beginAtZero: true }
+          },
+          plugins: { tooltip: { callbacks: { label: ctx => ` Revendas Engajadas: ${ctx.raw}` } } }
+        }
+      });
+
+      // 5. Revendas Vigentes por Mês (Gráfico de Barras)
+      destroyChart('chartRevendasVigentesMes');
+      chartInstances['chartRevendasVigentesMes'] = new Chart(document.getElementById('chartRevendasVigentesMes'), {
+        type: 'bar',
+        data: {
+          labels: labelsTempo,
+          datasets: [{
+            label: 'Revendas Vigentes (Compraram nos últimos 3 meses)',
+            data: vigentesTempo,
+            backgroundColor: '#0284C7'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: { title: { display: true, text: 'Meses' } },
+            y: { title: { display: true, text: 'Número de Revendas Vigentes' }, beginAtZero: true }
+          },
+          plugins: { tooltip: { callbacks: { label: ctx => ` Revendas Vigentes: ${ctx.raw}` } } }
+        }
+      });
+
+      // 6. Vendedores
       destroyChart('chartVendedores');
       const vendedoresSorted = Object.entries(fatPorExecutivo).sort((a,b) => b[1] - a[1]);
       chartInstances['chartVendedores'] = new Chart(document.getElementById('chartVendedores'), {
@@ -827,7 +947,7 @@ HTML
         }
       });
 
-      // 5. Revendas Únicas
+      // 7. Revendas Únicas
       destroyChart('chartRevendasMes');
       chartInstances['chartRevendasMes'] = new Chart(document.getElementById('chartRevendasMes'), {
         type: 'bar',
@@ -838,7 +958,7 @@ HTML
         options: { responsive: true, maintainAspectRatio: false }
       });
 
-      // 6. Top 10 Revendas
+      // 8. Top 10 Revendas
       destroyChart('chartTopRevendas');
       const topRevendasSorted = Object.entries(topRevendas).sort((a,b) => b[1] - a[1]).slice(0, 10);
       chartInstances['chartTopRevendas'] = new Chart(document.getElementById('chartTopRevendas'), {
@@ -855,7 +975,7 @@ HTML
         }
       });
 
-      // 7. Distribuidores
+      // 9. Distribuidores
       destroyChart('chartDistribuidoresMes');
       const distList = Object.keys(fatPorDistribuidor);
       const datasetsDist = distList.map((dist, idx) => ({
@@ -875,7 +995,7 @@ HTML
         }
       });
 
-      // 8. Share Distribuidores
+      // 10. Share Distribuidores
       destroyChart('chartDistribuidoresTotal');
       chartInstances['chartDistribuidoresTotal'] = new Chart(document.getElementById('chartDistribuidoresTotal'), {
         type: 'pie',
@@ -890,7 +1010,7 @@ HTML
         }
       });
 
-      // 9. UF
+      // 11. UF
       destroyChart('chartUf');
       chartInstances['chartUf'] = new Chart(document.getElementById('chartUf'), {
         type: 'bar',
