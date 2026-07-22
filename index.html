@@ -348,15 +348,22 @@
       </select>
     </div>
 
+    <div class="filter-group">
+      <label for="selectSegmento">☀️ Segmento:</label>
+      <select id="selectSegmento" class="filter-select" onchange="applyFilters()">
+        <option value="todos">Todos os Segmentos</option>
+      </select>
+    </div>
+
     <button class="btn-reset" onclick="resetFilters()">🔄 Limpar Filtros</button>
   </div>
 
   <div class="tabs-container">
     <ul class="tabs">
-      <li><button class="tab-button active" onclick="openTab('graficos')">📊 Panorâmica de Pagamentos</button></li>
-      <li><button class="tab-button" onclick="openTab('executivos')">👥 Vendedores & Revendas</button></li>
-      <li><button class="tab-button" onclick="openTab('distribuidores')">🏢 Distribuidores & Canais</button></li>
-      <li><button class="tab-button" onclick="openTab('dados')">📁 Base de Dados Completa</button></li>
+      <li><button class="tab-button active" onclick="openTab(event, 'graficos')">📊 Panorâmica de Pagamentos</button></li>
+      <li><button class="tab-button" onclick="openTab(event, 'executivos')">👥 Vendedores & Revendas</button></li>
+      <li><button class="tab-button" onclick="openTab(event, 'distribuidores')">🏢 Distribuidores & Canais</button></li>
+      <li><button class="tab-button" onclick="openTab(event, 'dados')">📁 Base de Dados Completa</button></li>
     </ul>
   </div>
 
@@ -364,7 +371,7 @@
     <div id="loading">
       <div class="spinner"></div>
       <h3 style="color: var(--intelbras-dark);">Carregando relatório do Google Sheets...</h3>
-      <p style="color: #6B7280; margin-top: 5px;">Lendo colunas "Mes" e "Ano" para automatizar filtros e gráficos em ordem cronológica.</p>
+      <p style="color: #6B7280; margin-top: 5px;">Lendo colunas "Mes", "Ano" e "Segmento" para automatizar filtros e gráficos em ordem cronológica.</p>
     </div>
 
     <div id="kpiSection" class="kpi-grid" style="display: none;">
@@ -498,12 +505,12 @@
     let chartInstances = {};
     let dataTableInstance = null;
 
-    function openTab(tabId) {
+    function openTab(evt, tabId) {
       document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
       document.querySelectorAll('.tab-button').forEach(button => button.classList.remove('active'));
       
       document.getElementById(tabId).classList.add('active');
-      event.currentTarget.classList.add('active');
+      evt.currentTarget.classList.add('active');
     }
 
     function parseValue(valStr) {
@@ -550,6 +557,7 @@
           document.getElementById('status').innerText = 'Sincronizado';
 
           populateYearFilter(rawHeaders, rawData);
+          populateSegmentoFilter(rawHeaders, rawData);
           buildTableStructure(rawHeaders);
           applyFilters();
         },
@@ -580,27 +588,52 @@
       });
     }
 
+    function populateSegmentoFilter(headers, data) {
+      const colSeg = findCol(headers, ['Segmento Projeto Solar', 'Segmento', 'Segmento Solar']) || 'Segmento Projeto Solar';
+      const segmentos = new Set();
+
+      data.forEach(row => {
+        const segVal = (row[colSeg] || '').toString().trim();
+        if (segVal !== '') {
+          segmentos.add(segVal);
+        }
+      });
+
+      const selectSeg = document.getElementById('selectSegmento');
+      Array.from(segmentos).sort().forEach(seg => {
+        const opt = document.createElement('option');
+        opt.value = seg;
+        opt.innerText = seg;
+        selectSeg.appendChild(opt);
+      });
+    }
+
     function resetFilters() {
       document.getElementById('selectAno').value = 'todos';
       document.getElementById('selectMes').value = 'todos';
+      document.getElementById('selectSegmento').value = 'todos';
       applyFilters();
     }
 
     function applyFilters() {
       const selectedAno = document.getElementById('selectAno').value;
       const selectedMes = document.getElementById('selectMes').value;
+      const selectedSegmento = document.getElementById('selectSegmento').value;
 
       const colAno = findCol(rawHeaders, ['Ano', 'Ano Pagamento']) || 'Ano';
       const colMes = findCol(rawHeaders, ['Mes', 'Mês', 'Mes Pagamento']) || 'Mes';
+      const colSeg = findCol(rawHeaders, ['Segmento Projeto Solar', 'Segmento', 'Segmento Solar']) || 'Segmento Projeto Solar';
 
       const filteredData = rawData.filter(row => {
         const rowAno = (row[colAno] || '').toString().trim();
         const rowMes = (row[colMes] || '').toString().trim();
+        const rowSeg = (row[colSeg] || '').toString().trim();
 
         const matchAno = (selectedAno === 'todos') || (rowAno === selectedAno);
         const matchMes = (selectedMes === 'todos') || (rowMes === selectedMes);
+        const matchSeg = (selectedSegmento === 'todos') || (rowSeg === selectedSegmento);
 
-        return matchAno && matchMes;
+        return matchAno && matchMes && matchSeg;
       });
 
       updateTableData(rawHeaders, filteredData);
@@ -668,7 +701,7 @@
       const revendasSet = new Set();
       const distribuidoresSet = new Set();
 
-      const periodosMap = {}; // Estrutura para ordenar por YYYY-MM
+      const periodosMap = {}; 
       const fatPorExecutivo = {};
       const topRevendas = {};
       const fatPorDistribuidor = {};
@@ -677,7 +710,6 @@
       const formaPagCount = {};
       const ufCount = {};
 
-      // Mapeamento global de compras de revenda por período considerando toda a base rawData para fidelidade do histórico de engajamento/vigência
       const revendasPorPeriodoGlobal = {};
       rawData.forEach(row => {
         const numMes = parseInt((row[colMes] || '0').toString().trim(), 10);
@@ -755,22 +787,17 @@
         ufCount[uf] = (ufCount[uf] || 0) + valor;
       });
 
-      // Ordena rigorosamente todos os períodos globais ordenados por chave YYYY-MM
       const todosPeriodosGlobais = Object.keys(revendasPorPeriodoGlobal).sort();
-
-      // Ordena rigorosamente os períodos em ordem cronológica (YYYY-MM) do filtro atual
       const periodosOrdenados = Object.keys(periodosMap).sort().map(k => periodosMap[k]);
       const labelsTempo = periodosOrdenados.map(p => p.label);
       const valoresTempo = periodosOrdenados.map(p => p.valor);
       const revendasTempo = periodosOrdenados.map(p => p.revendas.size);
       const distribuidoresTempo = periodosOrdenados.map(p => p.distribuidores.size);
 
-      // CÁLCULO DE REVENDAS ENGAJADAS E VIGENTES POR MÊS
       const engajadasTempo = periodosOrdenados.map(p => {
         const currKey = p.key;
         const idxGlobal = todosPeriodosGlobais.indexOf(currKey);
         if (idxGlobal < 5) {
-          // Se não há 5 meses anteriores no histórico global, calcula apenas com os períodos disponíveis existentes consecutivos
           const subsetKeys = todosPeriodosGlobais.slice(0, idxGlobal + 1);
           if (subsetKeys.length === 0) return 0;
           const setAtual = revendasPorPeriodoGlobal[currKey] || new Set();
@@ -781,7 +808,6 @@
           });
           return count;
         } else {
-          // Mês atual + 5 meses anteriores (total 6 meses consecutivos)
           const subsetKeys = todosPeriodosGlobais.slice(idxGlobal - 5, idxGlobal + 1);
           const setAtual = revendasPorPeriodoGlobal[currKey] || new Set();
           let count = 0;
@@ -814,7 +840,7 @@
       $('#kpiRevendas').text(revendasSet.size);
       $('#kpiDistribuidores').text(distribuidoresSet.size);
 
-      // 1. Pagamento Mês/Ano (Ordenado de Janeiro a Dezembro)
+      // 1. Pagamento Mês/Ano
       destroyChart('chartFaturamentoMes');
       chartInstances['chartFaturamentoMes'] = new Chart(document.getElementById('chartFaturamentoMes'), {
         type: 'line',
@@ -839,7 +865,7 @@
         }
       });
 
-      // 2. Distribuidores Únicos por Mês (Gráfico de Barras)
+      // 2. Distribuidores Únicos por Mês
       destroyChart('chartDistribuidoresUnicosMes');
       chartInstances['chartDistribuidoresUnicosMes'] = new Chart(document.getElementById('chartDistribuidoresUnicosMes'), {
         type: 'bar',
@@ -862,7 +888,7 @@
         }
       });
 
-      // 3. Revendas Únicas por Mês (Gráfico de Barras)
+      // 3. Revendas Únicas por Mês
       destroyChart('chartRevendasUnicasMes');
       chartInstances['chartRevendasUnicasMes'] = new Chart(document.getElementById('chartRevendasUnicasMes'), {
         type: 'bar',
@@ -885,7 +911,7 @@
         }
       });
 
-      // 4. Revendas Engajadas por Mês (Gráfico de Barras)
+      // 4. Revendas Engajadas por Mês
       destroyChart('chartRevendasEngajadasMes');
       chartInstances['chartRevendasEngajadasMes'] = new Chart(document.getElementById('chartRevendasEngajadasMes'), {
         type: 'bar',
@@ -908,7 +934,7 @@
         }
       });
 
-      // 5. Revendas Vigentes por Mês (Gráfico de Barras)
+      // 5. Revendas Vigentes por Mês
       destroyChart('chartRevendasVigentesMes');
       chartInstances['chartRevendasVigentesMes'] = new Chart(document.getElementById('chartRevendasVigentesMes'), {
         type: 'bar',
