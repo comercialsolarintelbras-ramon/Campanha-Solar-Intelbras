@@ -399,15 +399,15 @@
           </div>
         </div>
         <div class="card">
-          <h2>2. DISTRIBUIÇÃO POR SITUAÇÃO DO PEDIDO</h2>
+          <h2>2. DISTRIBUIDORES ÚNICOS COM PAGAMENTO REGISTRADO POR MÊS</h2>
           <div class="chart-container">
-            <canvas id="chartSituacao"></canvas>
+            <canvas id="chartDistribuidoresUnicosMes"></canvas>
           </div>
         </div>
         <div class="card">
-          <h2>3. PAGAMENTO POR FORMA DE PAGAMENTO</h2>
+          <h2>3. REVENDAS ÚNICAS COM PAGAMENTO REGISTRADO POR MÊS</h2>
           <div class="chart-container">
-            <canvas id="chartFormaPagamento"></canvas>
+            <canvas id="chartRevendasUnicasMes"></canvas>
           </div>
         </div>
       </div>
@@ -698,11 +698,20 @@
         if (distribuidor !== 'Direto / Outros') distribuidoresSet.add(distribuidor);
 
         if (!periodosMap[pKey]) {
-          periodosMap[pKey] = { key: pKey, label: labelTempo, valor: 0, revendas: new Set() };
+          periodosMap[pKey] = { 
+            key: pKey, 
+            label: labelTempo, 
+            valor: 0, 
+            revendas: new Set(),
+            distribuidores: new Set()
+          };
         }
         periodosMap[pKey].valor += valor;
         if (revenda !== 'Não Identificado') {
           periodosMap[pKey].revendas.add(revenda);
+        }
+        if (distribuidor !== 'Direto / Outros' && distribuidor !== 'Não Identificado') {
+          periodosMap[pKey].distribuidores.add(distribuidor);
         }
 
         fatPorExecutivo[executivo] = (fatPorExecutivo[executivo] || 0) + valor;
@@ -722,6 +731,7 @@
       const labelsTempo = periodosOrdenados.map(p => p.label);
       const valoresTempo = periodosOrdenados.map(p => p.valor);
       const revendasTempo = periodosOrdenados.map(p => p.revendas.size);
+      const distribuidoresTempo = periodosOrdenados.map(p => p.distribuidores.size);
 
       // Atualiza KPIs
       $('#kpiFaturamento').text(formatBRL(totalFaturamento));
@@ -754,29 +764,49 @@
         }
       });
 
-      // 2. Situação do Pedido
-      destroyChart('chartSituacao');
-      chartInstances['chartSituacao'] = new Chart(document.getElementById('chartSituacao'), {
-        type: 'doughnut',
-        data: {
-          labels: Object.keys(situacaoCount),
-          datasets: [{ data: Object.values(situacaoCount), backgroundColor: palette }]
-        },
-        options: { responsive: true, maintainAspectRatio: false }
-      });
-
-      // 3. Forma de Pagamento
-      destroyChart('chartFormaPagamento');
-      chartInstances['chartFormaPagamento'] = new Chart(document.getElementById('chartFormaPagamento'), {
+      // 2. Distribuidores Únicos por Mês (Gráfico de Barras)
+      destroyChart('chartDistribuidoresUnicosMes');
+      chartInstances['chartDistribuidoresUnicosMes'] = new Chart(document.getElementById('chartDistribuidoresUnicosMes'), {
         type: 'bar',
         data: {
-          labels: Object.keys(formaPagCount),
-          datasets: [{ label: 'Valor Total (R$)', data: Object.values(formaPagCount), backgroundColor: darkBg }]
+          labels: labelsTempo,
+          datasets: [{
+            label: 'Nº de Distribuidores Diferentes',
+            data: distribuidoresTempo,
+            backgroundColor: '#1F2937'
+          }]
         },
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          plugins: { tooltip: { callbacks: { label: ctx => ` ${formatBRL(ctx.raw)}` } } }
+          scales: {
+            x: { title: { display: true, text: 'Meses' } },
+            y: { title: { display: true, text: 'Número de Canais' }, beginAtZero: true, ticks: { stepSize: 1 } }
+          },
+          plugins: { tooltip: { callbacks: { label: ctx => ` Distribuidores: ${ctx.raw}` } } }
+        }
+      });
+
+      // 3. Revendas Únicas por Mês (Gráfico de Barras)
+      destroyChart('chartRevendasUnicasMes');
+      chartInstances['chartRevendasUnicasMes'] = new Chart(document.getElementById('chartRevendasUnicasMes'), {
+        type: 'bar',
+        data: {
+          labels: labelsTempo,
+          datasets: [{
+            label: 'Nº de Revendas Diferentes',
+            data: revendasTempo,
+            backgroundColor: green
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: { title: { display: true, text: 'Meses' } },
+            y: { title: { display: true, text: 'Número de Canais' }, beginAtZero: true }
+          },
+          plugins: { tooltip: { callbacks: { label: ctx => ` Revendas: ${ctx.raw}` } } }
         }
       });
 
