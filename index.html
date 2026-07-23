@@ -258,11 +258,35 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
+      text-transform: uppercase;
     }
 
     .chart-container {
       position: relative;
       height: 320px;
+    }
+
+    /* Contêineres de Rolagem para Gráficos com Muitos Dados */
+    .scrollable-container {
+      height: 350px;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding-right: 5px;
+    }
+
+    .scrollable-container::-webkit-scrollbar {
+      width: 6px;
+    }
+    
+    .scrollable-container::-webkit-scrollbar-thumb {
+      background: #CBD5E1;
+      border-radius: 4px;
+    }
+
+    .chart-inner {
+      position: relative;
+      width: 100%;
+      min-height: 350px;
     }
 
     /* Estilização da Tabela de Dados */
@@ -371,7 +395,7 @@
     <div id="loading">
       <div class="spinner"></div>
       <h3 style="color: var(--intelbras-dark);">Carregando relatório do Google Sheets...</h3>
-      <p style="color: #6B7280; margin-top: 5px;">Lendo colunas "Mes", "Ano" e "Segmento" para automatizar filtros e gráficos em ordem cronológica.</p>
+      <p style="color: #6B7280; margin-top: 5px;">Lendo dados para automatizar filtros e gráficos.</p>
     </div>
 
     <div id="kpiSection" class="kpi-grid" style="display: none;">
@@ -434,22 +458,36 @@
 
     <div id="executivos" class="tab-content">
       <div class="dashboard-grid">
-        <div class="card full-width">
-          <h2>6. PAGAMENTO POR VENDEDOR (Nome Executivo x Valor Total)</h2>
-          <div class="chart-container" style="height: 350px;">
-            <canvas id="chartVendedores"></canvas>
+        <div class="card">
+          <h2>6. PAGAMENTO POR VENDEDOR</h2>
+          <div class="scrollable-container">
+            <div class="chart-inner" id="inner-6">
+              <canvas id="chartVendedores"></canvas>
+            </div>
           </div>
         </div>
         <div class="card">
-          <h2>7. REVENDAS ÚNICAS QUE COMPRARAM NO PERÍODO</h2>
-          <div class="chart-container">
-            <canvas id="chartRevendasMes"></canvas>
+          <h2>7. REVENDAS ÚNICAS POR VENDEDOR</h2>
+          <div class="scrollable-container">
+            <div class="chart-inner" id="inner-7">
+              <canvas id="chartRevendasVendedor"></canvas>
+            </div>
           </div>
         </div>
         <div class="card">
           <h2>8. TOP 10 REVENDAS POR VOLUME DE COMPRAS</h2>
-          <div class="chart-container">
-            <canvas id="chartTopRevendas"></canvas>
+          <div class="scrollable-container">
+            <div class="chart-inner" id="inner-8">
+              <canvas id="chartTopRevendas"></canvas>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <h2>9. PROJETOS VENDIDOS POR VENDEDOR</h2>
+          <div class="scrollable-container">
+            <div class="chart-inner" id="inner-9">
+              <canvas id="chartProjetosVendedor"></canvas>
+            </div>
           </div>
         </div>
       </div>
@@ -458,19 +496,19 @@
     <div id="distribuidores" class="tab-content">
       <div class="dashboard-grid">
         <div class="card full-width">
-          <h2>9. PAGAMENTO POR DISTRIBUIDOR NO PERÍODO</h2>
+          <h2>10. PAGAMENTO POR DISTRIBUIDOR NO PERÍODO</h2>
           <div class="chart-container" style="height: 380px;">
             <canvas id="chartDistribuidoresMes"></canvas>
           </div>
         </div>
         <div class="card">
-          <h2>10. SHARE DE PAGAMENTO POR DISTRIBUIDOR</h2>
+          <h2>11. SHARE DE PAGAMENTO POR DISTRIBUIDOR</h2>
           <div class="chart-container">
             <canvas id="chartDistribuidoresTotal"></canvas>
           </div>
         </div>
         <div class="card">
-          <h2>11. DISTRIBUIÇÃO GEOGRÁFICA (Pagamento por UF)</h2>
+          <h2>12. DISTRIBUIÇÃO GEOGRÁFICA (Pagamento por UF)</h2>
           <div class="chart-container">
             <canvas id="chartUf"></canvas>
           </div>
@@ -691,7 +729,7 @@
       const colAno = findCol(headers, ['Ano', 'Ano Pagamento']) || 'Ano';
 
       const green = '#00A349';
-      const greenDark = '#006C30';
+      const greenDark = '#00853B';
       const darkBg = '#1F2937';
       const grayAccent = '#4B5563';
       const palette = ['#00A349', '#1F2937', '#0284C7', '#F59E0B', '#10B981', '#6366F1', '#EC4899', '#8B5CF6'];
@@ -703,6 +741,8 @@
 
       const periodosMap = {}; 
       const fatPorExecutivo = {};
+      const revendasPorExecutivo = {};
+      const projetosPorExecutivo = {};
       const topRevendas = {};
       const fatPorDistribuidor = {};
       const fatDistPorPeriodo = {};
@@ -775,8 +815,19 @@
           periodosMap[pKey].distribuidores.add(distribuidor);
         }
 
+        // Agrupamentos Aba 2
         fatPorExecutivo[executivo] = (fatPorExecutivo[executivo] || 0) + valor;
+        
+        if (executivo !== 'Não Identificado') {
+          if (!revendasPorExecutivo[executivo]) revendasPorExecutivo[executivo] = new Set();
+          if (revenda !== 'Não Identificado') revendasPorExecutivo[executivo].add(revenda);
+          
+          projetosPorExecutivo[executivo] = (projetosPorExecutivo[executivo] || 0) + 1;
+        }
+
         topRevendas[revenda] = (topRevendas[revenda] || 0) + valor;
+
+        // Agrupamentos Aba 3
         fatPorDistribuidor[distribuidor] = (fatPorDistribuidor[distribuidor] || 0) + valor;
 
         if (!fatDistPorPeriodo[distribuidor]) fatDistPorPeriodo[distribuidor] = {};
@@ -840,6 +891,7 @@
       $('#kpiRevendas').text(revendasSet.size);
       $('#kpiDistribuidores').text(distribuidoresSet.size);
 
+      /* ================= GRÁFICOS ABA 1 ================= */
       // 1. Pagamento Mês/Ano
       destroyChart('chartFaturamentoMes');
       chartInstances['chartFaturamentoMes'] = new Chart(document.getElementById('chartFaturamentoMes'), {
@@ -957,14 +1009,21 @@
         }
       });
 
-      // 6. Vendedores
+      /* ================= GRÁFICOS ABA 2 (MODIFICADOS) ================= */
+      
+      // 6. Pagamento por Vendedor (Invertido)
       destroyChart('chartVendedores');
       const vendedoresSorted = Object.entries(fatPorExecutivo).sort((a,b) => b[1] - a[1]);
+      const labels6 = vendedoresSorted.map(v => v[0]);
+      // Ajuste dinâmico de altura para rolagem
+      document.getElementById('inner-6').style.height = Math.max(350, labels6.length * 35) + 'px';
+      
       chartInstances['chartVendedores'] = new Chart(document.getElementById('chartVendedores'), {
         type: 'bar',
+        indexAxis: 'y',
         data: {
-          labels: vendedoresSorted.map(v => v[0]),
-          datasets: [{ label: 'Pagamento por Executivo (R$)', data: vendedoresSorted.map(v => v[1]), backgroundColor: green }]
+          labels: labels6,
+          datasets: [{ label: 'Pagamento Total (R$)', data: vendedoresSorted.map(v => v[1]), backgroundColor: green }]
         },
         options: {
           responsive: true,
@@ -973,20 +1032,29 @@
         }
       });
 
-      // 7. Revendas Únicas
-      destroyChart('chartRevendasMes');
-      chartInstances['chartRevendasMes'] = new Chart(document.getElementById('chartRevendasMes'), {
+      // 7. Revendas Únicas por Vendedor (Novo)
+      destroyChart('chartRevendasVendedor');
+      const revendasVendedorArray = Object.entries(revendasPorExecutivo).map(([exec, revSet]) => [exec, revSet.size]);
+      const revendasVendedorSorted = revendasVendedorArray.sort((a,b) => b[1] - a[1]);
+      const labels7 = revendasVendedorSorted.map(v => v[0]);
+      
+      document.getElementById('inner-7').style.height = Math.max(350, labels7.length * 35) + 'px';
+      
+      chartInstances['chartRevendasVendedor'] = new Chart(document.getElementById('chartRevendasVendedor'), {
         type: 'bar',
+        indexAxis: 'y',
         data: {
-          labels: labelsTempo,
-          datasets: [{ label: 'Nº de Revendas Distintas', data: revendasTempo, backgroundColor: '#0284C7' }]
+          labels: labels7,
+          datasets: [{ label: 'Nº de Revendas Únicas', data: revendasVendedorSorted.map(v => v[1]), backgroundColor: '#0284C7' }]
         },
         options: { responsive: true, maintainAspectRatio: false }
       });
 
-      // 8. Top 10 Revendas
+      // 8. Top 10 Revendas (Invertido)
       destroyChart('chartTopRevendas');
       const topRevendasSorted = Object.entries(topRevendas).sort((a,b) => b[1] - a[1]).slice(0, 10);
+      document.getElementById('inner-8').style.height = '350px'; // Top 10 cabe tranquilo em 350px
+      
       chartInstances['chartTopRevendas'] = new Chart(document.getElementById('chartTopRevendas'), {
         type: 'bar',
         indexAxis: 'y',
@@ -1001,7 +1069,25 @@
         }
       });
 
-      // 9. Distribuidores
+      // 9. Projetos por Vendedor (Novo)
+      destroyChart('chartProjetosVendedor');
+      const projetosSorted = Object.entries(projetosPorExecutivo).sort((a,b) => b[1] - a[1]);
+      const labels9 = projetosSorted.map(v => v[0]);
+      
+      document.getElementById('inner-9').style.height = Math.max(350, labels9.length * 35) + 'px';
+      
+      chartInstances['chartProjetosVendedor'] = new Chart(document.getElementById('chartProjetosVendedor'), {
+        type: 'bar',
+        indexAxis: 'y',
+        data: {
+          labels: labels9,
+          datasets: [{ label: 'Nº de Projetos (Vendas)', data: projetosSorted.map(v => v[1]), backgroundColor: '#F59E0B' }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+      });
+
+      /* ================= GRÁFICOS ABA 3 ================= */
+      // 10. Distribuidores
       destroyChart('chartDistribuidoresMes');
       const distList = Object.keys(fatPorDistribuidor);
       const datasetsDist = distList.map((dist, idx) => ({
@@ -1021,7 +1107,7 @@
         }
       });
 
-      // 10. Share Distribuidores
+      // 11. Share Distribuidores
       destroyChart('chartDistribuidoresTotal');
       chartInstances['chartDistribuidoresTotal'] = new Chart(document.getElementById('chartDistribuidoresTotal'), {
         type: 'pie',
@@ -1036,7 +1122,7 @@
         }
       });
 
-      // 11. UF
+      // 12. UF
       destroyChart('chartUf');
       chartInstances['chartUf'] = new Chart(document.getElementById('chartUf'), {
         type: 'bar',
