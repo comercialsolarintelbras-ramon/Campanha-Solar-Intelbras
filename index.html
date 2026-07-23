@@ -268,7 +268,7 @@
 
     /* Contêineres de Rolagem para Gráficos com Muitos Dados */
     .scrollable-container {
-      height: 350px;
+      height: 400px; /* Aumentado ligeiramente para melhor visualização */
       overflow-y: auto;
       overflow-x: hidden;
       padding-right: 5px;
@@ -286,7 +286,7 @@
     .chart-inner {
       position: relative;
       width: 100%;
-      min-height: 350px;
+      min-height: 400px;
     }
 
     /* Estilização da Tabela de Dados */
@@ -892,7 +892,6 @@
       $('#kpiDistribuidores').text(distribuidoresSet.size);
 
       /* ================= GRÁFICOS ABA 1 ================= */
-      // 1. Pagamento Mês/Ano
       destroyChart('chartFaturamentoMes');
       chartInstances['chartFaturamentoMes'] = new Chart(document.getElementById('chartFaturamentoMes'), {
         type: 'line',
@@ -917,177 +916,141 @@
         }
       });
 
-      // 2. Distribuidores Únicos por Mês
       destroyChart('chartDistribuidoresUnicosMes');
       chartInstances['chartDistribuidoresUnicosMes'] = new Chart(document.getElementById('chartDistribuidoresUnicosMes'), {
         type: 'bar',
         data: {
           labels: labelsTempo,
-          datasets: [{
-            label: 'Nº de Distribuidores Diferentes',
-            data: distribuidoresTempo,
-            backgroundColor: '#1F2937'
-          }]
+          datasets: [{ label: 'Nº de Distribuidores Diferentes', data: distribuidoresTempo, backgroundColor: '#1F2937' }]
         },
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          scales: {
-            x: { title: { display: true, text: 'Meses' } },
-            y: { title: { display: true, text: 'Número de Canais' }, beginAtZero: true, ticks: { stepSize: 1 } }
-          },
-          plugins: { tooltip: { callbacks: { label: ctx => ` Distribuidores: ${ctx.raw}` } } }
+          scales: { x: { title: { display: true, text: 'Meses' } }, y: { title: { display: true, text: 'Número de Canais' }, beginAtZero: true, ticks: { stepSize: 1 } } }
         }
       });
 
-      // 3. Revendas Únicas por Mês
       destroyChart('chartRevendasUnicasMes');
       chartInstances['chartRevendasUnicasMes'] = new Chart(document.getElementById('chartRevendasUnicasMes'), {
         type: 'bar',
         data: {
           labels: labelsTempo,
-          datasets: [{
-            label: 'Nº de Revendas Diferentes',
-            data: revendasTempo,
-            backgroundColor: green
-          }]
+          datasets: [{ label: 'Nº de Revendas Diferentes', data: revendasTempo, backgroundColor: green }]
         },
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          scales: {
-            x: { title: { display: true, text: 'Meses' } },
-            y: { title: { display: true, text: 'Número de Canais' }, beginAtZero: true }
-          },
-          plugins: { tooltip: { callbacks: { label: ctx => ` Revendas: ${ctx.raw}` } } }
+          scales: { x: { title: { display: true, text: 'Meses' } }, y: { title: { display: true, text: 'Número de Canais' }, beginAtZero: true } }
         }
       });
 
-      // 4. Revendas Engajadas por Mês
       destroyChart('chartRevendasEngajadasMes');
       chartInstances['chartRevendasEngajadasMes'] = new Chart(document.getElementById('chartRevendasEngajadasMes'), {
         type: 'bar',
         data: {
           labels: labelsTempo,
-          datasets: [{
-            label: 'Revendas Engajadas (Ativas nos últimos 6 meses)',
-            data: engajadasTempo,
-            backgroundColor: '#10B981'
-          }]
+          datasets: [{ label: 'Revendas Engajadas', data: engajadasTempo, backgroundColor: '#10B981' }]
         },
         options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          scales: {
-            x: { title: { display: true, text: 'Meses' } },
-            y: { title: { display: true, text: 'Número de Revendas Engajadas' }, beginAtZero: true }
-          },
-          plugins: { tooltip: { callbacks: { label: ctx => ` Revendas Engajadas: ${ctx.raw}` } } }
+          responsive: true, maintainAspectRatio: false,
+          scales: { x: { title: { display: true, text: 'Meses' } }, y: { title: { display: true, text: 'Número de Revendas Engajadas' }, beginAtZero: true } }
         }
       });
 
-      // 5. Revendas Vigentes por Mês
       destroyChart('chartRevendasVigentesMes');
       chartInstances['chartRevendasVigentesMes'] = new Chart(document.getElementById('chartRevendasVigentesMes'), {
         type: 'bar',
         data: {
           labels: labelsTempo,
-          datasets: [{
-            label: 'Revendas Vigentes (Compraram nos últimos 3 meses)',
-            data: vigentesTempo,
-            backgroundColor: '#0284C7'
-          }]
+          datasets: [{ label: 'Revendas Vigentes', data: vigentesTempo, backgroundColor: '#0284C7' }]
         },
         options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          scales: {
-            x: { title: { display: true, text: 'Meses' } },
-            y: { title: { display: true, text: 'Número de Revendas Vigentes' }, beginAtZero: true }
-          },
-          plugins: { tooltip: { callbacks: { label: ctx => ` Revendas Vigentes: ${ctx.raw}` } } }
+          responsive: true, maintainAspectRatio: false,
+          scales: { x: { title: { display: true, text: 'Meses' } }, y: { title: { display: true, text: 'Número de Revendas Vigentes' }, beginAtZero: true } }
         }
       });
 
-      /* ================= GRÁFICOS ABA 2 (MODIFICADOS) ================= */
+      /* ================= GRÁFICOS ABA 2 (EIXO INVERTIDO CORRIGIDO) ================= */
       
-      // 6. Pagamento por Vendedor (Invertido)
+      // 6. Pagamento por Vendedor
       destroyChart('chartVendedores');
       const vendedoresSorted = Object.entries(fatPorExecutivo).sort((a,b) => b[1] - a[1]);
       const labels6 = vendedoresSorted.map(v => v[0]);
-      // Ajuste dinâmico de altura para rolagem
-      document.getElementById('inner-6').style.height = Math.max(350, labels6.length * 35) + 'px';
+      document.getElementById('inner-6').style.height = Math.max(400, labels6.length * 35) + 'px';
       
       chartInstances['chartVendedores'] = new Chart(document.getElementById('chartVendedores'), {
         type: 'bar',
-        indexAxis: 'y',
         data: {
           labels: labels6,
           datasets: [{ label: 'Pagamento Total (R$)', data: vendedoresSorted.map(v => v[1]), backgroundColor: green }]
         },
         options: {
+          indexAxis: 'y', // <-- Declarado AQUI dentro das options para funcionar
           responsive: true,
           maintainAspectRatio: false,
           plugins: { tooltip: { callbacks: { label: ctx => ` ${formatBRL(ctx.raw)}` } } }
         }
       });
 
-      // 7. Revendas Únicas por Vendedor (Novo)
+      // 7. Revendas Únicas por Vendedor
       destroyChart('chartRevendasVendedor');
       const revendasVendedorArray = Object.entries(revendasPorExecutivo).map(([exec, revSet]) => [exec, revSet.size]);
       const revendasVendedorSorted = revendasVendedorArray.sort((a,b) => b[1] - a[1]);
       const labels7 = revendasVendedorSorted.map(v => v[0]);
-      
-      document.getElementById('inner-7').style.height = Math.max(350, labels7.length * 35) + 'px';
+      document.getElementById('inner-7').style.height = Math.max(400, labels7.length * 35) + 'px';
       
       chartInstances['chartRevendasVendedor'] = new Chart(document.getElementById('chartRevendasVendedor'), {
         type: 'bar',
-        indexAxis: 'y',
         data: {
           labels: labels7,
           datasets: [{ label: 'Nº de Revendas Únicas', data: revendasVendedorSorted.map(v => v[1]), backgroundColor: '#0284C7' }]
         },
-        options: { responsive: true, maintainAspectRatio: false }
+        options: {
+          indexAxis: 'y', // <-- Declarado AQUI
+          responsive: true,
+          maintainAspectRatio: false
+        }
       });
 
-      // 8. Top 10 Revendas (Invertido)
+      // 8. Top 10 Revendas
       destroyChart('chartTopRevendas');
       const topRevendasSorted = Object.entries(topRevendas).sort((a,b) => b[1] - a[1]).slice(0, 10);
-      document.getElementById('inner-8').style.height = '350px'; // Top 10 cabe tranquilo em 350px
+      document.getElementById('inner-8').style.height = '400px'; 
       
       chartInstances['chartTopRevendas'] = new Chart(document.getElementById('chartTopRevendas'), {
         type: 'bar',
-        indexAxis: 'y',
         data: {
           labels: topRevendasSorted.map(r => r[0]),
           datasets: [{ label: 'Total Comprado (R$)', data: topRevendasSorted.map(r => r[1]), backgroundColor: greenDark }]
         },
         options: {
+          indexAxis: 'y', // <-- Declarado AQUI
           responsive: true,
           maintainAspectRatio: false,
           plugins: { tooltip: { callbacks: { label: ctx => ` ${formatBRL(ctx.raw)}` } } }
         }
       });
 
-      // 9. Projetos por Vendedor (Novo)
+      // 9. Projetos por Vendedor
       destroyChart('chartProjetosVendedor');
       const projetosSorted = Object.entries(projetosPorExecutivo).sort((a,b) => b[1] - a[1]);
       const labels9 = projetosSorted.map(v => v[0]);
-      
-      document.getElementById('inner-9').style.height = Math.max(350, labels9.length * 35) + 'px';
+      document.getElementById('inner-9').style.height = Math.max(400, labels9.length * 35) + 'px';
       
       chartInstances['chartProjetosVendedor'] = new Chart(document.getElementById('chartProjetosVendedor'), {
         type: 'bar',
-        indexAxis: 'y',
         data: {
           labels: labels9,
           datasets: [{ label: 'Nº de Projetos (Vendas)', data: projetosSorted.map(v => v[1]), backgroundColor: '#F59E0B' }]
         },
-        options: { responsive: true, maintainAspectRatio: false }
+        options: {
+          indexAxis: 'y', // <-- Declarado AQUI
+          responsive: true,
+          maintainAspectRatio: false
+        }
       });
 
       /* ================= GRÁFICOS ABA 3 ================= */
-      // 10. Distribuidores
       destroyChart('chartDistribuidoresMes');
       const distList = Object.keys(fatPorDistribuidor);
       const datasetsDist = distList.map((dist, idx) => ({
@@ -1100,14 +1063,12 @@
         type: 'bar',
         data: { labels: labelsTempo, datasets: datasetsDist },
         options: {
-          responsive: true,
-          maintainAspectRatio: false,
+          responsive: true, maintainAspectRatio: false,
           scales: { x: { stacked: true }, y: { stacked: true } },
           plugins: { tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${formatBRL(ctx.raw)}` } } }
         }
       });
 
-      // 11. Share Distribuidores
       destroyChart('chartDistribuidoresTotal');
       chartInstances['chartDistribuidoresTotal'] = new Chart(document.getElementById('chartDistribuidoresTotal'), {
         type: 'pie',
@@ -1116,13 +1077,11 @@
           datasets: [{ data: Object.values(fatPorDistribuidor), backgroundColor: palette }]
         },
         options: {
-          responsive: true,
-          maintainAspectRatio: false,
+          responsive: true, maintainAspectRatio: false,
           plugins: { tooltip: { callbacks: { label: ctx => `${ctx.label}: ${formatBRL(ctx.raw)}` } } }
         }
       });
 
-      // 12. UF
       destroyChart('chartUf');
       chartInstances['chartUf'] = new Chart(document.getElementById('chartUf'), {
         type: 'bar',
@@ -1131,8 +1090,7 @@
           datasets: [{ label: 'Pagamento por Estado (R$)', data: Object.values(ufCount), backgroundColor: grayAccent }]
         },
         options: {
-          responsive: true,
-          maintainAspectRatio: false,
+          responsive: true, maintainAspectRatio: false,
           plugins: { tooltip: { callbacks: { label: ctx => ` ${formatBRL(ctx.raw)}` } } }
         }
       });
