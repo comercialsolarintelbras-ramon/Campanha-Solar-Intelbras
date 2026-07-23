@@ -6,6 +6,8 @@
   <title>Dashboard de Vendas e Pagamentos - Intelbras</title>
   
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+  
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
   <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
   <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
@@ -266,9 +268,13 @@
       height: 320px;
     }
 
+    .chart-container.large {
+      height: 450px;
+    }
+
     /* Contêineres de Rolagem para Gráficos com Muitos Dados */
     .scrollable-container {
-      height: 400px; /* Aumentado ligeiramente para melhor visualização */
+      height: 400px;
       overflow-y: auto;
       overflow-x: hidden;
       padding-right: 5px;
@@ -495,24 +501,59 @@
 
     <div id="distribuidores" class="tab-content">
       <div class="dashboard-grid">
+        
         <div class="card full-width">
           <h2>10. PAGAMENTO POR DISTRIBUIDOR NO PERÍODO</h2>
-          <div class="chart-container" style="height: 380px;">
-            <canvas id="chartDistribuidoresMes"></canvas>
+          <div class="scrollable-container">
+            <div class="chart-inner" id="inner-10">
+              <canvas id="chartDistribuidoresValor"></canvas>
+            </div>
           </div>
         </div>
-        <div class="card">
+
+        <div class="card full-width">
           <h2>11. SHARE DE PAGAMENTO POR DISTRIBUIDOR</h2>
-          <div class="chart-container">
+          <div class="chart-container large">
             <canvas id="chartDistribuidoresTotal"></canvas>
           </div>
         </div>
+
         <div class="card">
           <h2>12. DISTRIBUIÇÃO GEOGRÁFICA (Pagamento por UF)</h2>
           <div class="chart-container">
             <canvas id="chartUf"></canvas>
           </div>
         </div>
+        <div class="card">
+          <h2>13. DISTRIBUIDORES POR ESTADO (UF)</h2>
+          <div class="chart-container">
+            <canvas id="chartDistribuidoresUF"></canvas>
+          </div>
+        </div>
+        <div class="card">
+          <h2>14. PROJETOS VENDIDOS POR ESTADO (UF)</h2>
+          <div class="chart-container">
+            <canvas id="chartProjetosUF"></canvas>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>15. REVENDAS ÚNICAS POR DISTRIBUIDOR</h2>
+          <div class="scrollable-container">
+            <div class="chart-inner" id="inner-15">
+              <canvas id="chartRevendasDistr"></canvas>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <h2>16. PROJETOS POR DISTRIBUIDOR</h2>
+          <div class="scrollable-container">
+            <div class="chart-inner" id="inner-16">
+              <canvas id="chartProjetosDistr"></canvas>
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
 
@@ -530,6 +571,9 @@
   </main>
 
   <script>
+    // Registrar o plugin DataLabels
+    Chart.register(ChartDataLabels);
+
     const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQOiLkeVnkeppFPBEDRmFPdwElbO7Z8aP_DBDtKdAAn61xqHi-uCkhMg3tRaEa-PEm9xkj9wyPUa-tS/pub?gid=0&single=true&output=csv';
 
     const mesNomes = {
@@ -609,14 +653,10 @@
     function populateYearFilter(headers, data) {
       const colAno = findCol(headers, ['Ano', 'Ano Pagamento']) || 'Ano';
       const anos = new Set();
-
       data.forEach(row => {
         const anoVal = parseInt((row[colAno] || '').toString().trim(), 10);
-        if (!isNaN(anoVal)) {
-          anos.add(anoVal);
-        }
+        if (!isNaN(anoVal)) anos.add(anoVal);
       });
-
       const selectAno = document.getElementById('selectAno');
       Array.from(anos).sort((a, b) => a - b).forEach(ano => {
         const opt = document.createElement('option');
@@ -629,14 +669,10 @@
     function populateSegmentoFilter(headers, data) {
       const colSeg = findCol(headers, ['Segmento Projeto Solar', 'Segmento', 'Segmento Solar']) || 'Segmento Projeto Solar';
       const segmentos = new Set();
-
       data.forEach(row => {
         const segVal = (row[colSeg] || '').toString().trim();
-        if (segVal !== '') {
-          segmentos.add(segVal);
-        }
+        if (segVal !== '') segmentos.add(segVal);
       });
-
       const selectSeg = document.getElementById('selectSegmento');
       Array.from(segmentos).sort().forEach(seg => {
         const opt = document.createElement('option');
@@ -681,40 +717,27 @@
     function buildTableStructure(headers) {
       const headerRow = $('#tableHeader');
       headerRow.empty();
-      headers.forEach(header => {
-        headerRow.append(`<th>${header}</th>`);
-      });
+      headers.forEach(header => headerRow.append(`<th>${header}</th>`));
     }
 
     function updateTableData(headers, data) {
-      if (dataTableInstance) {
-        dataTableInstance.destroy();
-      }
-
+      if (dataTableInstance) dataTableInstance.destroy();
       const body = $('#tableBody');
       body.empty();
-
       data.forEach(row => {
         let tr = '<tr>';
-        headers.forEach(header => {
-          tr += `<td>${row[header] || ''}</td>`;
-        });
+        headers.forEach(header => tr += `<td>${row[header] || ''}</td>`);
         tr += '</tr>';
         body.append(tr);
       });
-
       dataTableInstance = $('#dataTable').DataTable({
         language: { url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/pt-BR.json' },
-        pageLength: 10,
-        scrollX: true,
-        destroy: true
+        pageLength: 10, scrollX: true, destroy: true
       });
     }
 
     function destroyChart(id) {
-      if (chartInstances[id]) {
-        chartInstances[id].destroy();
-      }
+      if (chartInstances[id]) chartInstances[id].destroy();
     }
 
     function buildDashboards(headers, data) {
@@ -730,9 +753,8 @@
 
       const green = '#00A349';
       const greenDark = '#00853B';
-      const darkBg = '#1F2937';
       const grayAccent = '#4B5563';
-      const palette = ['#00A349', '#1F2937', '#0284C7', '#F59E0B', '#10B981', '#6366F1', '#EC4899', '#8B5CF6'];
+      const palette = ['#00A349', '#1F2937', '#0284C7', '#F59E0B', '#10B981', '#6366F1', '#EC4899', '#8B5CF6', '#F43F5E', '#14B8A6', '#8B5CF6'];
 
       let totalFaturamento = 0;
       const executivosSet = new Set();
@@ -744,11 +766,15 @@
       const revendasPorExecutivo = {};
       const projetosPorExecutivo = {};
       const topRevendas = {};
+      
       const fatPorDistribuidor = {};
-      const fatDistPorPeriodo = {};
-      const situacaoCount = {};
-      const formaPagCount = {};
       const ufCount = {};
+      
+      // Novos agrupamentos para a Aba 3
+      const distribuidoresPorUF = {};
+      const projetosPorUF = {};
+      const revendasPorDistribuidor = {};
+      const projetosPorDistribuidor = {};
 
       const revendasPorPeriodoGlobal = {};
       rawData.forEach(row => {
@@ -759,9 +785,7 @@
         if (numMes >= 1 && numMes <= 12 && revenda !== 'Não Identificado') {
           const mm = numMes < 10 ? '0' + numMes : '' + numMes;
           const pKey = numAno > 0 ? `${numAno}-${mm}` : `0000-${mm}`;
-          if (!revendasPorPeriodoGlobal[pKey]) {
-            revendasPorPeriodoGlobal[pKey] = new Set();
-          }
+          if (!revendasPorPeriodoGlobal[pKey]) revendasPorPeriodoGlobal[pKey] = new Set();
           revendasPorPeriodoGlobal[pKey].add(revenda);
         }
       });
@@ -777,20 +801,13 @@
         if (numMes >= 1 && numMes <= 12) {
           const nomeM = mesNomes[numMes];
           const mm = numMes < 10 ? '0' + numMes : '' + numMes;
-          if (numAno > 0) {
-            pKey = `${numAno}-${mm}`;
-            labelTempo = `${nomeM}/${numAno}`;
-          } else {
-            pKey = `0000-${mm}`;
-            labelTempo = nomeM;
-          }
+          pKey = numAno > 0 ? `${numAno}-${mm}` : `0000-${mm}`;
+          labelTempo = numAno > 0 ? `${nomeM}/${numAno}` : nomeM;
         }
 
         const executivo = row[colExecutivo] || 'Não Identificado';
         const revenda = row[colRevenda] || 'Não Identificado';
         const distribuidor = row[colDistribuidor] || 'Direto / Outros';
-        const situacao = row[colSituacao] || 'Outros';
-        const formaPag = row[colFormaPag] || 'Outros';
         const uf = row[colUF] || 'ND';
 
         totalFaturamento += valor;
@@ -799,43 +816,36 @@
         if (distribuidor !== 'Direto / Outros') distribuidoresSet.add(distribuidor);
 
         if (!periodosMap[pKey]) {
-          periodosMap[pKey] = { 
-            key: pKey, 
-            label: labelTempo, 
-            valor: 0, 
-            revendas: new Set(),
-            distribuidores: new Set()
-          };
+          periodosMap[pKey] = { key: pKey, label: labelTempo, valor: 0, revendas: new Set(), distribuidores: new Set() };
         }
         periodosMap[pKey].valor += valor;
-        if (revenda !== 'Não Identificado') {
-          periodosMap[pKey].revendas.add(revenda);
-        }
-        if (distribuidor !== 'Direto / Outros' && distribuidor !== 'Não Identificado') {
-          periodosMap[pKey].distribuidores.add(distribuidor);
-        }
+        if (revenda !== 'Não Identificado') periodosMap[pKey].revendas.add(revenda);
+        if (distribuidor !== 'Direto / Outros' && distribuidor !== 'Não Identificado') periodosMap[pKey].distribuidores.add(distribuidor);
 
         // Agrupamentos Aba 2
         fatPorExecutivo[executivo] = (fatPorExecutivo[executivo] || 0) + valor;
-        
         if (executivo !== 'Não Identificado') {
           if (!revendasPorExecutivo[executivo]) revendasPorExecutivo[executivo] = new Set();
           if (revenda !== 'Não Identificado') revendasPorExecutivo[executivo].add(revenda);
-          
           projetosPorExecutivo[executivo] = (projetosPorExecutivo[executivo] || 0) + 1;
         }
-
         topRevendas[revenda] = (topRevendas[revenda] || 0) + valor;
 
         // Agrupamentos Aba 3
         fatPorDistribuidor[distribuidor] = (fatPorDistribuidor[distribuidor] || 0) + valor;
-
-        if (!fatDistPorPeriodo[distribuidor]) fatDistPorPeriodo[distribuidor] = {};
-        fatDistPorPeriodo[distribuidor][pKey] = (fatDistPorPeriodo[distribuidor][pKey] || 0) + valor;
-
-        situacaoCount[situacao] = (situacaoCount[situacao] || 0) + 1;
-        formaPagCount[formaPag] = (formaPagCount[formaPag] || 0) + valor;
         ufCount[uf] = (ufCount[uf] || 0) + valor;
+
+        // Novos contadores
+        if (!distribuidoresPorUF[uf]) distribuidoresPorUF[uf] = new Set();
+        if (distribuidor !== 'Direto / Outros' && distribuidor !== 'Não Identificado') distribuidoresPorUF[uf].add(distribuidor);
+        
+        projetosPorUF[uf] = (projetosPorUF[uf] || 0) + 1;
+
+        if (distribuidor !== 'Direto / Outros' && distribuidor !== 'Não Identificado') {
+          if (!revendasPorDistribuidor[distribuidor]) revendasPorDistribuidor[distribuidor] = new Set();
+          if (revenda !== 'Não Identificado') revendasPorDistribuidor[distribuidor].add(revenda);
+          projetosPorDistribuidor[distribuidor] = (projetosPorDistribuidor[distribuidor] || 0) + 1;
+        }
       });
 
       const todosPeriodosGlobais = Object.keys(revendasPorPeriodoGlobal).sort();
@@ -846,41 +856,22 @@
       const distribuidoresTempo = periodosOrdenados.map(p => p.distribuidores.size);
 
       const engajadasTempo = periodosOrdenados.map(p => {
-        const currKey = p.key;
-        const idxGlobal = todosPeriodosGlobais.indexOf(currKey);
-        if (idxGlobal < 5) {
-          const subsetKeys = todosPeriodosGlobais.slice(0, idxGlobal + 1);
-          if (subsetKeys.length === 0) return 0;
-          const setAtual = revendasPorPeriodoGlobal[currKey] || new Set();
-          let count = 0;
-          setAtual.forEach(rev => {
-            const comprouEmTodos = subsetKeys.every(k => revendasPorPeriodoGlobal[k] && revendasPorPeriodoGlobal[k].has(rev));
-            if (comprouEmTodos) count++;
-          });
-          return count;
-        } else {
-          const subsetKeys = todosPeriodosGlobais.slice(idxGlobal - 5, idxGlobal + 1);
-          const setAtual = revendasPorPeriodoGlobal[currKey] || new Set();
-          let count = 0;
-          setAtual.forEach(rev => {
-            const comprouEmTodos = subsetKeys.every(k => revendasPorPeriodoGlobal[k] && revendasPorPeriodoGlobal[k].has(rev));
-            if (comprouEmTodos) count++;
-          });
-          return count;
-        }
+        const idxGlobal = todosPeriodosGlobais.indexOf(p.key);
+        const subsetKeys = idxGlobal < 5 ? todosPeriodosGlobais.slice(0, idxGlobal + 1) : todosPeriodosGlobais.slice(idxGlobal - 5, idxGlobal + 1);
+        const setAtual = revendasPorPeriodoGlobal[p.key] || new Set();
+        let count = 0;
+        setAtual.forEach(rev => {
+          if (subsetKeys.every(k => revendasPorPeriodoGlobal[k] && revendasPorPeriodoGlobal[k].has(rev))) count++;
+        });
+        return count;
       });
 
       const vigentesTempo = periodosOrdenados.map(p => {
-        const currKey = p.key;
-        const idxGlobal = todosPeriodosGlobais.indexOf(currKey);
-        const startIdx = Math.max(0, idxGlobal - 2);
-        const subsetKeys = todosPeriodosGlobais.slice(startIdx, idxGlobal + 1);
-        
+        const idxGlobal = todosPeriodosGlobais.indexOf(p.key);
+        const subsetKeys = todosPeriodosGlobais.slice(Math.max(0, idxGlobal - 2), idxGlobal + 1);
         const revendasVigentesNoPeriodo = new Set();
         subsetKeys.forEach(k => {
-          if (revendasPorPeriodoGlobal[k]) {
-            revendasPorPeriodoGlobal[k].forEach(rev => revendasVigentesNoPeriodo.add(rev));
-          }
+          if (revendasPorPeriodoGlobal[k]) revendasPorPeriodoGlobal[k].forEach(rev => revendasVigentesNoPeriodo.add(rev));
         });
         return revendasVigentesNoPeriodo.size;
       });
@@ -891,208 +882,196 @@
       $('#kpiRevendas').text(revendasSet.size);
       $('#kpiDistribuidores').text(distribuidoresSet.size);
 
+      // Desativar datalabels globalmente para não poluir gráficos de barra normais
+      Chart.defaults.plugins.datalabels.display = false;
+
       /* ================= GRÁFICOS ABA 1 ================= */
       destroyChart('chartFaturamentoMes');
       chartInstances['chartFaturamentoMes'] = new Chart(document.getElementById('chartFaturamentoMes'), {
         type: 'line',
         data: {
           labels: labelsTempo,
-          datasets: [{
-            label: 'Pagamento Total (R$)',
-            data: valoresTempo,
-            borderColor: green,
-            backgroundColor: 'rgba(0, 163, 73, 0.1)',
-            fill: true,
-            tension: 0.3,
-            borderWidth: 3,
-            pointRadius: 5,
-            pointBackgroundColor: green
-          }]
+          datasets: [{ label: 'Pagamento Total (R$)', data: valoresTempo, borderColor: green, backgroundColor: 'rgba(0, 163, 73, 0.1)', fill: true, tension: 0.3 }]
         },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: { tooltip: { callbacks: { label: ctx => ` ${formatBRL(ctx.raw)}` } } }
-        }
+        options: { responsive: true, maintainAspectRatio: false, plugins: { tooltip: { callbacks: { label: ctx => ` ${formatBRL(ctx.raw)}` } } } }
       });
 
       destroyChart('chartDistribuidoresUnicosMes');
       chartInstances['chartDistribuidoresUnicosMes'] = new Chart(document.getElementById('chartDistribuidoresUnicosMes'), {
         type: 'bar',
-        data: {
-          labels: labelsTempo,
-          datasets: [{ label: 'Nº de Distribuidores Diferentes', data: distribuidoresTempo, backgroundColor: '#1F2937' }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          scales: { x: { title: { display: true, text: 'Meses' } }, y: { title: { display: true, text: 'Número de Canais' }, beginAtZero: true, ticks: { stepSize: 1 } } }
-        }
+        data: { labels: labelsTempo, datasets: [{ label: 'Nº Distribuidores', data: distribuidoresTempo, backgroundColor: '#1F2937' }] },
+        options: { responsive: true, maintainAspectRatio: false }
       });
 
       destroyChart('chartRevendasUnicasMes');
       chartInstances['chartRevendasUnicasMes'] = new Chart(document.getElementById('chartRevendasUnicasMes'), {
         type: 'bar',
-        data: {
-          labels: labelsTempo,
-          datasets: [{ label: 'Nº de Revendas Diferentes', data: revendasTempo, backgroundColor: green }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          scales: { x: { title: { display: true, text: 'Meses' } }, y: { title: { display: true, text: 'Número de Canais' }, beginAtZero: true } }
-        }
+        data: { labels: labelsTempo, datasets: [{ label: 'Nº Revendas', data: revendasTempo, backgroundColor: green }] },
+        options: { responsive: true, maintainAspectRatio: false }
       });
 
       destroyChart('chartRevendasEngajadasMes');
       chartInstances['chartRevendasEngajadasMes'] = new Chart(document.getElementById('chartRevendasEngajadasMes'), {
         type: 'bar',
-        data: {
-          labels: labelsTempo,
-          datasets: [{ label: 'Revendas Engajadas', data: engajadasTempo, backgroundColor: '#10B981' }]
-        },
-        options: {
-          responsive: true, maintainAspectRatio: false,
-          scales: { x: { title: { display: true, text: 'Meses' } }, y: { title: { display: true, text: 'Número de Revendas Engajadas' }, beginAtZero: true } }
-        }
+        data: { labels: labelsTempo, datasets: [{ label: 'Revendas Engajadas', data: engajadasTempo, backgroundColor: '#10B981' }] },
+        options: { responsive: true, maintainAspectRatio: false }
       });
 
       destroyChart('chartRevendasVigentesMes');
       chartInstances['chartRevendasVigentesMes'] = new Chart(document.getElementById('chartRevendasVigentesMes'), {
         type: 'bar',
-        data: {
-          labels: labelsTempo,
-          datasets: [{ label: 'Revendas Vigentes', data: vigentesTempo, backgroundColor: '#0284C7' }]
-        },
-        options: {
-          responsive: true, maintainAspectRatio: false,
-          scales: { x: { title: { display: true, text: 'Meses' } }, y: { title: { display: true, text: 'Número de Revendas Vigentes' }, beginAtZero: true } }
-        }
+        data: { labels: labelsTempo, datasets: [{ label: 'Revendas Vigentes', data: vigentesTempo, backgroundColor: '#0284C7' }] },
+        options: { responsive: true, maintainAspectRatio: false }
       });
 
-      /* ================= GRÁFICOS ABA 2 (EIXO INVERTIDO CORRIGIDO) ================= */
-      
-      // 6. Pagamento por Vendedor
+      /* ================= GRÁFICOS ABA 2 ================= */
       destroyChart('chartVendedores');
       const vendedoresSorted = Object.entries(fatPorExecutivo).sort((a,b) => b[1] - a[1]);
-      const labels6 = vendedoresSorted.map(v => v[0]);
-      document.getElementById('inner-6').style.height = Math.max(400, labels6.length * 35) + 'px';
-      
+      document.getElementById('inner-6').style.height = Math.max(400, vendedoresSorted.length * 35) + 'px';
       chartInstances['chartVendedores'] = new Chart(document.getElementById('chartVendedores'), {
         type: 'bar',
-        data: {
-          labels: labels6,
-          datasets: [{ label: 'Pagamento Total (R$)', data: vendedoresSorted.map(v => v[1]), backgroundColor: green }]
-        },
-        options: {
-          indexAxis: 'y', // <-- Declarado AQUI dentro das options para funcionar
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: { tooltip: { callbacks: { label: ctx => ` ${formatBRL(ctx.raw)}` } } }
-        }
+        data: { labels: vendedoresSorted.map(v => v[0]), datasets: [{ label: 'Pagamento (R$)', data: vendedoresSorted.map(v => v[1]), backgroundColor: green }] },
+        options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { tooltip: { callbacks: { label: ctx => ` ${formatBRL(ctx.raw)}` } } } }
       });
 
-      // 7. Revendas Únicas por Vendedor
       destroyChart('chartRevendasVendedor');
-      const revendasVendedorArray = Object.entries(revendasPorExecutivo).map(([exec, revSet]) => [exec, revSet.size]);
-      const revendasVendedorSorted = revendasVendedorArray.sort((a,b) => b[1] - a[1]);
-      const labels7 = revendasVendedorSorted.map(v => v[0]);
-      document.getElementById('inner-7').style.height = Math.max(400, labels7.length * 35) + 'px';
-      
+      const revendasVendedorSorted = Object.entries(revendasPorExecutivo).map(([e, r]) => [e, r.size]).sort((a,b) => b[1] - a[1]);
+      document.getElementById('inner-7').style.height = Math.max(400, revendasVendedorSorted.length * 35) + 'px';
       chartInstances['chartRevendasVendedor'] = new Chart(document.getElementById('chartRevendasVendedor'), {
         type: 'bar',
-        data: {
-          labels: labels7,
-          datasets: [{ label: 'Nº de Revendas Únicas', data: revendasVendedorSorted.map(v => v[1]), backgroundColor: '#0284C7' }]
-        },
-        options: {
-          indexAxis: 'y', // <-- Declarado AQUI
-          responsive: true,
-          maintainAspectRatio: false
-        }
+        data: { labels: revendasVendedorSorted.map(v => v[0]), datasets: [{ label: 'Revendas Únicas', data: revendasVendedorSorted.map(v => v[1]), backgroundColor: '#0284C7' }] },
+        options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false }
       });
 
-      // 8. Top 10 Revendas
       destroyChart('chartTopRevendas');
       const topRevendasSorted = Object.entries(topRevendas).sort((a,b) => b[1] - a[1]).slice(0, 10);
-      document.getElementById('inner-8').style.height = '400px'; 
-      
       chartInstances['chartTopRevendas'] = new Chart(document.getElementById('chartTopRevendas'), {
         type: 'bar',
+        data: { labels: topRevendasSorted.map(r => r[0]), datasets: [{ label: 'Total (R$)', data: topRevendasSorted.map(r => r[1]), backgroundColor: greenDark }] },
+        options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { tooltip: { callbacks: { label: ctx => ` ${formatBRL(ctx.raw)}` } } } }
+      });
+
+      destroyChart('chartProjetosVendedor');
+      const projetosSorted = Object.entries(projetosPorExecutivo).sort((a,b) => b[1] - a[1]);
+      document.getElementById('inner-9').style.height = Math.max(400, projetosSorted.length * 35) + 'px';
+      chartInstances['chartProjetosVendedor'] = new Chart(document.getElementById('chartProjetosVendedor'), {
+        type: 'bar',
+        data: { labels: projetosSorted.map(v => v[0]), datasets: [{ label: 'Projetos', data: projetosSorted.map(v => v[1]), backgroundColor: '#F59E0B' }] },
+        options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false }
+      });
+
+      /* ================= GRÁFICOS ABA 3 (MODIFICADA) ================= */
+      
+      // 10. Pagamento por Distribuidor (Agora em barras horizontais)
+      destroyChart('chartDistribuidoresValor');
+      const distribuidoresSorted = Object.entries(fatPorDistribuidor).sort((a,b) => b[1] - a[1]);
+      document.getElementById('inner-10').style.height = Math.max(400, distribuidoresSorted.length * 35) + 'px';
+      
+      chartInstances['chartDistribuidoresValor'] = new Chart(document.getElementById('chartDistribuidoresValor'), {
+        type: 'bar',
         data: {
-          labels: topRevendasSorted.map(r => r[0]),
-          datasets: [{ label: 'Total Comprado (R$)', data: topRevendasSorted.map(r => r[1]), backgroundColor: greenDark }]
+          labels: distribuidoresSorted.map(d => d[0]),
+          datasets: [{ label: 'Pagamento Total (R$)', data: distribuidoresSorted.map(d => d[1]), backgroundColor: green }]
         },
         options: {
-          indexAxis: 'y', // <-- Declarado AQUI
+          indexAxis: 'y',
           responsive: true,
           maintainAspectRatio: false,
           plugins: { tooltip: { callbacks: { label: ctx => ` ${formatBRL(ctx.raw)}` } } }
         }
       });
 
-      // 9. Projetos por Vendedor
-      destroyChart('chartProjetosVendedor');
-      const projetosSorted = Object.entries(projetosPorExecutivo).sort((a,b) => b[1] - a[1]);
-      const labels9 = projetosSorted.map(v => v[0]);
-      document.getElementById('inner-9').style.height = Math.max(400, labels9.length * 35) + 'px';
-      
-      chartInstances['chartProjetosVendedor'] = new Chart(document.getElementById('chartProjetosVendedor'), {
-        type: 'bar',
-        data: {
-          labels: labels9,
-          datasets: [{ label: 'Nº de Projetos (Vendas)', data: projetosSorted.map(v => v[1]), backgroundColor: '#F59E0B' }]
-        },
-        options: {
-          indexAxis: 'y', // <-- Declarado AQUI
-          responsive: true,
-          maintainAspectRatio: false
-        }
-      });
-
-      /* ================= GRÁFICOS ABA 3 ================= */
-      destroyChart('chartDistribuidoresMes');
-      const distList = Object.keys(fatPorDistribuidor);
-      const datasetsDist = distList.map((dist, idx) => ({
-        label: dist,
-        data: periodosOrdenados.map(p => fatDistPorPeriodo[dist][p.key] || 0),
-        backgroundColor: palette[idx % palette.length]
-      }));
-
-      chartInstances['chartDistribuidoresMes'] = new Chart(document.getElementById('chartDistribuidoresMes'), {
-        type: 'bar',
-        data: { labels: labelsTempo, datasets: datasetsDist },
-        options: {
-          responsive: true, maintainAspectRatio: false,
-          scales: { x: { stacked: true }, y: { stacked: true } },
-          plugins: { tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${formatBRL(ctx.raw)}` } } }
-        }
-      });
-
+      // 11. Share com Agrupamento de Outros e DataLabels de %
       destroyChart('chartDistribuidoresTotal');
+      let totalDistGeral = distribuidoresSorted.reduce((sum, item) => sum + item[1], 0);
+      let shareLabels = [];
+      let shareData = [];
+      let outrosValor = 0;
+
+      distribuidoresSorted.forEach(item => {
+        let pct = item[1] / totalDistGeral;
+        if (pct < 0.02) {
+          outrosValor += item[1];
+        } else {
+          shareLabels.push(item[0]);
+          shareData.push(item[1]);
+        }
+      });
+
+      if (outrosValor > 0) {
+        shareLabels.push('Outros (< 2%)');
+        shareData.push(outrosValor);
+      }
+
       chartInstances['chartDistribuidoresTotal'] = new Chart(document.getElementById('chartDistribuidoresTotal'), {
         type: 'pie',
         data: {
-          labels: Object.keys(fatPorDistribuidor),
-          datasets: [{ data: Object.values(fatPorDistribuidor), backgroundColor: palette }]
+          labels: shareLabels,
+          datasets: [{ data: shareData, backgroundColor: palette }]
         },
         options: {
           responsive: true, maintainAspectRatio: false,
-          plugins: { tooltip: { callbacks: { label: ctx => `${ctx.label}: ${formatBRL(ctx.raw)}` } } }
+          plugins: {
+            datalabels: {
+              display: true, // Ativa apenas para este gráfico
+              color: '#FFFFFF',
+              font: { weight: 'bold', size: 12 },
+              formatter: (value, ctx) => {
+                let sum = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                let percentage = (value * 100 / sum).toFixed(1) + "%";
+                return percentage;
+              }
+            },
+            tooltip: { callbacks: { label: ctx => `${ctx.label}: ${formatBRL(ctx.raw)}` } }
+          }
         }
       });
 
+      // 12. Distribuição por UF
       destroyChart('chartUf');
+      const ufSorted = Object.entries(ufCount).sort((a,b) => b[1] - a[1]);
       chartInstances['chartUf'] = new Chart(document.getElementById('chartUf'), {
         type: 'bar',
-        data: {
-          labels: Object.keys(ufCount),
-          datasets: [{ label: 'Pagamento por Estado (R$)', data: Object.values(ufCount), backgroundColor: grayAccent }]
-        },
-        options: {
-          responsive: true, maintainAspectRatio: false,
-          plugins: { tooltip: { callbacks: { label: ctx => ` ${formatBRL(ctx.raw)}` } } }
-        }
+        data: { labels: ufSorted.map(u => u[0]), datasets: [{ label: 'Pagamento (R$)', data: ufSorted.map(u => u[1]), backgroundColor: grayAccent }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { tooltip: { callbacks: { label: ctx => ` ${formatBRL(ctx.raw)}` } } } }
+      });
+
+      // 13. Distribuidores por UF
+      destroyChart('chartDistribuidoresUF');
+      const distUfSorted = Object.entries(distribuidoresPorUF).map(([uf, distSet]) => [uf, distSet.size]).sort((a,b) => b[1] - a[1]);
+      chartInstances['chartDistribuidoresUF'] = new Chart(document.getElementById('chartDistribuidoresUF'), {
+        type: 'bar',
+        data: { labels: distUfSorted.map(u => u[0]), datasets: [{ label: 'Nº Distribuidores', data: distUfSorted.map(u => u[1]), backgroundColor: '#0284C7' }] },
+        options: { responsive: true, maintainAspectRatio: false }
+      });
+
+      // 14. Projetos Vendidos por UF
+      destroyChart('chartProjetosUF');
+      const projUfSorted = Object.entries(projetosPorUF).sort((a,b) => b[1] - a[1]);
+      chartInstances['chartProjetosUF'] = new Chart(document.getElementById('chartProjetosUF'), {
+        type: 'bar',
+        data: { labels: projUfSorted.map(u => u[0]), datasets: [{ label: 'Nº Projetos', data: projUfSorted.map(u => u[1]), backgroundColor: '#F59E0B' }] },
+        options: { responsive: true, maintainAspectRatio: false }
+      });
+
+      // 15. Revendas Únicas por Distribuidor
+      destroyChart('chartRevendasDistr');
+      const revDistrSorted = Object.entries(revendasPorDistribuidor).map(([d, revSet]) => [d, revSet.size]).sort((a,b) => b[1] - a[1]);
+      document.getElementById('inner-15').style.height = Math.max(400, revDistrSorted.length * 35) + 'px';
+      chartInstances['chartRevendasDistr'] = new Chart(document.getElementById('chartRevendasDistr'), {
+        type: 'bar',
+        data: { labels: revDistrSorted.map(r => r[0]), datasets: [{ label: 'Revendas Únicas', data: revDistrSorted.map(r => r[1]), backgroundColor: '#10B981' }] },
+        options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false }
+      });
+
+      // 16. Projetos por Distribuidor
+      destroyChart('chartProjetosDistr');
+      const projDistrSorted = Object.entries(projetosPorDistribuidor).sort((a,b) => b[1] - a[1]);
+      document.getElementById('inner-16').style.height = Math.max(400, projDistrSorted.length * 35) + 'px';
+      chartInstances['chartProjetosDistr'] = new Chart(document.getElementById('chartProjetosDistr'), {
+        type: 'bar',
+        data: { labels: projDistrSorted.map(p => p[0]), datasets: [{ label: 'Nº Projetos', data: projDistrSorted.map(p => p[1]), backgroundColor: '#8B5CF6' }] },
+        options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false }
       });
     }
   </script>
